@@ -1,0 +1,1022 @@
+<div class="og-plugin" id="onion_guard_app" style="display:none;">
+<style>
+.og-plugin{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#333;padding:0;box-sizing:border-box;}
+.og-tabs{display:flex;border-bottom:2px solid #eee;padding:0 15px;background:#fafafa;align-items:center;flex-wrap:wrap;}
+.og-tab{padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-size:13px;color:#666;transition:all .2s;white-space:nowrap;}
+.og-tab:hover{color:#6c3b9e;}
+.og-tab.active{color:#6c3b9e;border-bottom-color:#6c3b9e;font-weight:600;}
+.og-pane{display:none;padding:15px;}
+.og-pane.active{display:block;}
+.og-body{overflow-y:auto;overflow-x:hidden;}
+.og-card{background:#f8f9fa;border-radius:8px;padding:14px;border:1px solid #e9ecef;}
+.og-card-title{font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.5px;margin-bottom:6px;}
+.og-card-value{font-size:15px;font-weight:600;color:#333;word-break:break-all;}
+.og-status-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:15px;}
+.og-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:15px;}
+.og-stat-card{background:#f8f9fa;border:1px solid #e9ecef;border-radius:8px;padding:12px;text-align:center;}
+.og-stat-num{font-size:22px;font-weight:700;color:#6c3b9e;}
+.og-stat-label{font-size:11px;color:#888;margin-top:4px;}
+.og-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;}
+.og-badge-green{background:#d4edda;color:#155724;}
+.og-badge-red{background:#f8d7da;color:#721c24;}
+.og-badge-gray{background:#e2e3e5;color:#383d41;}
+.og-badge-blue{background:#d1ecf1;color:#0c5460;}
+.og-badge-orange{background:#ffeeba;color:#856404;}
+.og-btn{display:inline-block;padding:6px 16px;border-radius:5px;border:none;cursor:pointer;font-size:13px;font-weight:500;margin:3px;transition:all .15s;}
+.og-btn-sm{padding:4px 10px;font-size:12px;}
+.og-btn-primary{background:#6c3b9e;color:#fff;}.og-btn-primary:hover{background:#5a2d87;}
+.og-btn-success{background:#28a745;color:#fff;}.og-btn-success:hover{background:#218838;}
+.og-btn-danger{background:#dc3545;color:#fff;}.og-btn-danger:hover{background:#c82333;}
+.og-btn-warning{background:#ffc107;color:#333;}.og-btn-warning:hover{background:#e0a800;}
+.og-btn-outline{background:transparent;border:1px solid #ccc;color:#555;}.og-btn-outline:hover{border-color:#6c3b9e;color:#6c3b9e;}
+.og-btn:disabled{opacity:.5;cursor:not-allowed;}
+.og-btn-group{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0;}
+.og-form-row{margin-bottom:14px;}
+.og-label{display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:4px;}
+.og-desc{font-size:11px;color:#888;margin-bottom:4px;line-height:1.4;}
+.og-input{width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:5px;font-size:13px;box-sizing:border-box;}
+.og-input:focus{border-color:#6c3b9e;outline:none;box-shadow:0 0 0 2px rgba(108,59,158,.15);}
+.og-input-sm{max-width:200px;}
+.og-textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:5px;font-size:12px;font-family:'Courier New',monospace;min-height:140px;box-sizing:border-box;resize:vertical;}
+.og-select{padding:7px 10px;border:1px solid #ddd;border-radius:5px;font-size:13px;}
+.og-section{margin-bottom:18px;}
+.og-section-title{font-size:13px;font-weight:600;color:#555;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid #eee;}
+.og-sticky-actions{display:flex;justify-content:flex-end;align-items:center;padding:12px 0;border-top:2px solid #eee;margin-top:10px;position:sticky;bottom:0;background:#fff;z-index:5;}
+.og-alert{padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:10px;}
+.og-alert-info{background:#d1ecf1;color:#0c5460;}
+.og-alert-success{background:#d4edda;color:#155724;}
+.og-alert-warning{background:#fff3cd;color:#856404;}
+.og-alert-danger{background:#f8d7da;color:#721c24;}
+.og-log-box{background:#1a1a2e;color:#7fdbca;font-family:'Courier New',monospace;font-size:12px;line-height:1.6;padding:12px;border-radius:6px;max-height:420px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}
+.og-code-box{background:#1e1e2e;color:#cdd6f4;font-family:'Courier New',monospace;font-size:12px;padding:12px;border-radius:6px;white-space:pre;overflow-x:auto;}
+.og-tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.og-tag{display:inline-flex;align-items:center;background:#f0e6ff;border:1px solid #d4b8ff;border-radius:20px;padding:3px 10px;font-size:12px;font-family:'Courier New',monospace;color:#4a2080;gap:6px;}
+.og-tag-del{cursor:pointer;color:#888;font-size:14px;line-height:1;}.og-tag-del:hover{color:#dc3545;}
+.og-loading{text-align:center;padding:30px;color:#888;}
+.og-spin{display:inline-block;width:20px;height:20px;border:2px solid #ddd;border-top-color:#6c3b9e;border-radius:50%;animation:ogspin .6s linear infinite;margin-right:8px;vertical-align:middle;}
+@keyframes ogspin{to{transform:rotate(360deg);}}
+.og-install-box{text-align:center;padding:40px 20px;}
+.og-slider{width:100%;accent-color:#6c3b9e;}
+.og-diff-desc{font-size:12px;padding:6px 10px;background:#f0e6ff;border-radius:5px;color:#4a2080;margin-top:6px;}
+/* Domain table */
+.og-domain-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;}
+.og-domain-table th{text-align:left;padding:8px 10px;background:#f0f0f0;border-bottom:2px solid #ddd;font-size:11px;text-transform:uppercase;color:#666;}
+.og-domain-table td{padding:8px 10px;border-bottom:1px solid #eee;vertical-align:middle;}
+.og-domain-table tr:hover td{background:#fafafa;}
+.og-domain-name{font-family:'Courier New',monospace;font-size:12px;word-break:break-all;}
+.og-toggle{position:relative;display:inline-block;width:42px;height:22px;}
+.og-toggle input{opacity:0;width:0;height:0;}
+.og-toggle .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;transition:.3s;border-radius:22px;}
+.og-toggle .slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%;}
+.og-toggle input:checked + .slider{background:#28a745;}
+.og-toggle input:checked + .slider:before{transform:translateX(20px);}
+/* Color swatch */
+.og-color-row{display:flex;align-items:center;gap:8px;}
+.og-color-swatch{width:36px;height:28px;border:1px solid #ccc;border-radius:4px;cursor:pointer;padding:0;}
+/* Branding preview */
+.og-preview-box{background:#0a0a0a;border-radius:8px;padding:24px;text-align:center;margin-top:12px;border:1px solid #333;}
+</style>
+
+<!-- TABS -->
+<div class="og-tabs" id="og_tabs">
+    <div class="og-tab active" data-tab="status">⚡ Status</div>
+    <div class="og-tab" data-tab="domains">🌐 Domains</div>
+    <div class="og-tab" data-tab="config">⚙️ Config</div>
+    <div class="og-tab" data-tab="branding">🎨 Branding</div>
+    <div class="og-tab" data-tab="firewall">🛡️ Firewall</div>
+    <div class="og-tab" data-tab="webserver">🔗 Web Server</div>
+    <div class="og-tab" data-tab="logs">📋 Logs</div>
+</div>
+
+<div class="og-body" id="og_body">
+
+<!-- INSTALL SCREEN -->
+<div id="og_pane_install" style="display:none;">
+    <div class="og-install-box">
+        <div style="font-size:56px;margin-bottom:16px;">🛡️</div>
+        <h3 style="margin-bottom:8px;color:#555;">Onion Guard is not installed</h3>
+        <p style="color:#888;font-size:13px;margin-bottom:6px;">PoW challenge server to protect your .onion hidden services from bots and DDoS.</p>
+        <p style="color:#aaa;font-size:12px;margin-bottom:20px;">Requires: python3-venv, internet access to PyPI.</p>
+        <button class="og-btn og-btn-outline og-btn-sm" onclick="OG.runDiagnose()" style="margin-bottom:16px;">🔍 Check Requirements</button>
+        <div id="og_diag_result" style="text-align:left;margin-bottom:16px;display:none;"></div>
+        <br>
+        <button class="og-btn og-btn-success" id="og_install_btn" onclick="OG.install()" style="font-size:15px;padding:10px 30px;">Install Onion Guard</button>
+        <br><br>
+        <div id="og_install_progress" style="display:none;text-align:left;">
+            <div class="og-alert og-alert-info" style="margin-bottom:8px;"><span class="og-spin"></span> Installing… this may take 1–2 minutes.</div>
+            <div class="og-log-box" id="og_install_log" style="max-height:200px;font-size:11px;"></div>
+        </div>
+        <br>
+        <button class="og-btn og-btn-outline og-btn-sm" onclick="OG.init()">↻ Re-check</button>
+    </div>
+</div>
+
+<!-- STATUS PANE -->
+<div class="og-pane active" id="og_pane_status">
+    <div class="og-loading" id="og_status_loading"><span class="og-spin"></span> Loading status...</div>
+    <div id="og_status_content" style="display:none;"></div>
+</div>
+
+<!-- DOMAINS PANE -->
+<div class="og-pane" id="og_pane_domains">
+    <div class="og-loading" id="og_domains_loading"><span class="og-spin"></span> Loading domains...</div>
+    <div id="og_domains_content" style="display:none;"></div>
+</div>
+
+<!-- CONFIG PANE -->
+<div class="og-pane" id="og_pane_config">
+    <div class="og-loading" id="og_config_loading"><span class="og-spin"></span> Loading config...</div>
+    <div id="og_config_content" style="display:none;">
+        <div class="og-section">
+            <div class="og-section-title">Proof of Work</div>
+            <div class="og-form-row">
+                <label class="og-label">Difficulty</label>
+                <div class="og-desc">Higher = harder for bots, slower for real users. 4 is recommended.</div>
+                <input type="range" class="og-slider" id="cfg_difficulty" min="3" max="6" step="1" oninput="OG.updateDiffDesc()">
+                <div class="og-diff-desc" id="cfg_diff_desc">—</div>
+            </div>
+            <div class="og-form-row">
+                <label class="og-label">Token TTL (seconds)</label>
+                <div class="og-desc">How long a solved challenge is valid. 3600 = 1 hour.</div>
+                <input type="number" class="og-input og-input-sm" id="cfg_token_ttl" min="300" max="86400">
+            </div>
+            <div class="og-form-row">
+                <label class="og-label">Secret Key</label>
+                <div class="og-desc">Used to sign JWT tokens. Changing this invalidates all active tokens.</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="text" class="og-input" id="cfg_pow_secret" placeholder="(masked)" style="flex:1;font-family:monospace;">
+                    <button class="og-btn og-btn-warning og-btn-sm" onclick="OG.regenSecret()">↺ Regenerate</button>
+                </div>
+            </div>
+        </div>
+        <div class="og-section">
+            <div class="og-section-title">Network</div>
+            <div class="og-form-row">
+                <label class="og-label">Listen Port</label>
+                <div class="og-desc">Local port the challenge server listens on. Must match the vhost proxy snippet.</div>
+                <input type="number" class="og-input og-input-sm" id="cfg_listen_port" min="1024" max="65535">
+            </div>
+            <div class="og-form-row">
+                <label class="og-label">Rate Limit (requests per 2-min window per IP)</label>
+                <input type="number" class="og-input og-input-sm" id="cfg_rate_limit" min="5" max="500">
+            </div>
+        </div>
+        <div class="og-sticky-actions">
+            <button class="og-btn og-btn-primary" onclick="OG.saveConfig()">💾 Save & Restart</button>
+        </div>
+    </div>
+</div>
+
+<!-- BRANDING PANE -->
+<div class="og-pane" id="og_pane_branding">
+    <div class="og-loading" id="og_brand_loading"><span class="og-spin"></span> Loading branding...</div>
+    <div id="og_brand_content" style="display:none;">
+        <div class="og-section">
+            <div class="og-section-title">Challenge Page Appearance</div>
+            <div class="og-form-row">
+                <label class="og-label">Logo</label>
+                <div class="og-desc">Upload your logo (PNG, SVG, JPG, WebP — max 2 MB, ~36px height recommended). Served locally, no external requests.</div>
+                <div id="br_logo_area" style="margin-top:8px;">
+                    <div id="br_logo_preview" style="display:none;margin-bottom:10px;">
+                        <img id="br_logo_img" src="" alt="Logo" style="height:36px;max-width:240px;background:#111;border:1px solid #333;border-radius:4px;padding:6px;">
+                        <button class="og-btn og-btn-outline og-btn-sm" onclick="OG.deleteLogo()" style="margin-left:10px;color:#dc3545;border-color:#dc3545;font-size:11px;">✕ Remove</button>
+                    </div>
+                    <div id="br_logo_dropzone" style="border:2px dashed #444;border-radius:6px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;background:#0d0d0d;"
+                         onclick="document.getElementById('br_logo_file').click()"
+                         ondragover="event.preventDefault();this.style.borderColor='#00bf80';"
+                         ondragleave="this.style.borderColor='#444';"
+                         ondrop="event.preventDefault();this.style.borderColor='#444';OG.handleLogoDrop(event);">
+                        <div style="font-size:24px;margin-bottom:6px;">📁</div>
+                        <div style="font-size:12px;color:#888;">Click or drag & drop an image</div>
+                    </div>
+                    <input type="file" id="br_logo_file" accept="image/png,image/svg+xml,image/jpeg,image/webp,image/gif" style="display:none;" onchange="OG.handleLogoSelect(this)">
+                    <div id="br_logo_status" style="font-size:11px;margin-top:6px;"></div>
+                </div>
+            </div>
+            <div class="og-form-row">
+                <label class="og-label">Page Title</label>
+                <input type="text" class="og-input" id="br_page_title" placeholder="Security Verification">
+            </div>
+            <div class="og-form-row">
+                <label class="og-label">Subtitle (HTML allowed)</label>
+                <input type="text" class="og-input" id="br_subtitle" placeholder="Your browser is completing a proof-of-work challenge.">
+            </div>
+            <div class="og-form-row">
+                <label class="og-label">Primary Color</label>
+                <div class="og-color-row">
+                    <input type="color" class="og-color-swatch" id="br_primary_color" value="#00bf80">
+                    <input type="text" class="og-input og-input-sm" id="br_primary_color_hex" placeholder="#00bf80" style="max-width:120px;font-family:monospace;">
+                </div>
+            </div>
+            <div class="og-form-row">
+                <label class="og-label">Background Color</label>
+                <div class="og-color-row">
+                    <input type="color" class="og-color-swatch" id="br_background_color" value="#0a0a0a">
+                    <input type="text" class="og-input og-input-sm" id="br_background_color_hex" placeholder="#0a0a0a" style="max-width:120px;font-family:monospace;">
+                </div>
+            </div>
+            <div class="og-form-row">
+                <label class="og-label">Card Color</label>
+                <div class="og-color-row">
+                    <input type="color" class="og-color-swatch" id="br_card_color" value="#111111">
+                    <input type="text" class="og-input og-input-sm" id="br_card_color_hex" placeholder="#111111" style="max-width:120px;font-family:monospace;">
+                </div>
+            </div>
+            <div class="og-form-row">
+                <label class="og-label">Text Color</label>
+                <div class="og-color-row">
+                    <input type="color" class="og-color-swatch" id="br_text_color" value="#e0e0e0">
+                    <input type="text" class="og-input og-input-sm" id="br_text_color_hex" placeholder="#e0e0e0" style="max-width:120px;font-family:monospace;">
+                </div>
+            </div>
+            <div class="og-form-row" style="margin-top:8px;">
+                <label class="og-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal;">
+                    <input type="checkbox" id="br_show_branding" checked style="width:16px;height:16px;cursor:pointer;" onchange="OG.previewBranding()">
+                    <span>Show <strong>"Provided by Impreza Host"</strong> on the challenge page</span>
+                </label>
+                <div class="og-desc" style="margin-top:4px;">Uncheck to hide the credit line in the footer of the challenge page.</div>
+            </div>
+        </div>
+        <div class="og-section">
+            <div class="og-section-title">Preview</div>
+            <div class="og-preview-box" id="og_brand_preview"></div>
+        </div>
+        <div class="og-sticky-actions">
+            <button class="og-btn og-btn-outline" onclick="OG.previewBranding()" style="margin-right:8px;">👁 Preview</button>
+            <button class="og-btn og-btn-primary" onclick="OG.saveBranding()">💾 Save & Restart</button>
+        </div>
+    </div>
+</div>
+
+<!-- FIREWALL PANE -->
+<div class="og-pane" id="og_pane_firewall">
+    <div class="og-loading" id="og_fw_loading"><span class="og-spin"></span> Loading blocklist...</div>
+    <div id="og_fw_content" style="display:none;">
+        <div class="og-section">
+            <div class="og-section-title">Blocked Paths</div>
+            <div class="og-desc" style="margin-bottom:10px;">Requests to these paths return 403 immediately.</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <input type="text" class="og-input" id="fw_new_path" placeholder="/admin/ or /.env" style="flex:1;">
+                <button class="og-btn og-btn-danger og-btn-sm" onclick="OG.addPath()">+ Block</button>
+            </div>
+            <div id="fw_paths_list" class="og-tag-list"></div>
+        </div>
+        <div class="og-section">
+            <div class="og-section-title">Blocked User-Agents</div>
+            <div class="og-desc" style="margin-bottom:10px;">Requests from these scanners/bots are rejected.</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <input type="text" class="og-input" id="fw_new_agent" placeholder="sqlmap, nikto…" style="flex:1;">
+                <button class="og-btn og-btn-danger og-btn-sm" onclick="OG.addAgent()">+ Block</button>
+            </div>
+            <div id="fw_agents_list" class="og-tag-list"></div>
+        </div>
+    </div>
+</div>
+
+<!-- WEB SERVER PANE -->
+<div class="og-pane" id="og_pane_webserver">
+    <div id="og_ws_detecting" style="text-align:center;padding:20px;"><span class="og-spin"></span> Detecting web server...</div>
+    <div id="og_ws_content" style="display:none;">
+        <div style="margin-bottom:14px;">
+            <span class="og-badge" id="og_ws_badge" style="font-size:12px;padding:4px 12px;">—</span>
+        </div>
+        <div class="og-section">
+            <div class="og-section-title" id="og_modules_title">Required Modules</div>
+            <p style="font-size:13px;color:#555;margin-bottom:10px;" id="og_modules_desc">Checking web server requirements.</p>
+            <div id="og_modules_result" style="margin-bottom:10px;"><span style="color:#888;font-size:13px;">Click Check to verify.</span></div>
+            <div class="og-btn-group">
+                <button class="og-btn og-btn-primary og-btn-sm" onclick="OG.checkModules()">🔍 Check</button>
+                <button class="og-btn og-btn-success og-btn-sm" id="og_enable_btn" style="display:none;" onclick="OG.enableModules()">⚡ Fix / Reload</button>
+            </div>
+            <div id="og_enable_result" style="margin-top:8px;"></div>
+        </div>
+        <div class="og-section">
+            <div class="og-section-title">VHost Snippet</div>
+            <p style="font-size:13px;color:#555;margin-bottom:10px;" id="og_snippet_desc">Add these lines inside each .onion vhost config:</p>
+            <div class="og-code-box" id="og_ws_snippet">Loading...</div>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                <button class="og-btn og-btn-outline og-btn-sm" onclick="OG.copyText(document.getElementById('og_ws_snippet').textContent)">📋 Copy snippet</button>
+                <button class="og-btn og-btn-primary og-btn-sm" onclick="OG.testConnection()">🔍 Test connection</button>
+            </div>
+            <div id="og_test_result" style="margin-top:10px;"></div>
+        </div>
+        <div class="og-section">
+            <div class="og-section-title">VHost Auto-Injection</div>
+            <p style="font-size:13px;color:#555;margin-bottom:10px;">Scan website vhosts and inject the Onion Guard proxy snippet automatically.</p>
+            <div class="og-btn-group" style="margin-bottom:10px;">
+                <button class="og-btn og-btn-primary og-btn-sm" onclick="OG.scanVhosts()">🔍 Scan VHosts</button>
+                <button class="og-btn og-btn-success og-btn-sm" id="og_inject_all_btn" style="display:none;" onclick="OG.injectAll()">⚡ Inject All Missing</button>
+            </div>
+            <div id="og_vhost_result"></div>
+        </div>
+    </div>
+</div>
+
+<!-- LOGS PANE -->
+<div class="og-pane" id="og_pane_logs">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="og-section-title" style="margin:0;border:0;padding:0;">Service Logs</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+            <select class="og-select" id="log_lines">
+                <option value="50">50 lines</option>
+                <option value="100" selected>100 lines</option>
+                <option value="200">200 lines</option>
+                <option value="500">500 lines</option>
+            </select>
+            <button class="og-btn og-btn-primary og-btn-sm" onclick="OG.loadLogs()">↻ Refresh</button>
+            <button class="og-btn og-btn-outline og-btn-sm" onclick="OG.clearStats()">🗑 Clear stats</button>
+        </div>
+    </div>
+    <div class="og-log-box" id="og_log_content">Loading...</div>
+    <div style="font-size:11px;color:#888;margin-top:4px;" id="og_log_source"></div>
+</div>
+
+</div><!-- end og-body -->
+
+<script>
+(function(){
+'use strict';
+var OG = window.OG = {};
+
+var pluginPath = '/plugin?action=a&name=onion_guard&s=';
+function api(method, args, cb, timeout){
+    $.ajax({
+        url: pluginPath + method, type: 'POST', data: args || {},
+        timeout: timeout || 30000,
+        success: function(d){ if(typeof d==='string') try{ d=JSON.parse(d); }catch(e){} cb && cb(d); },
+        error: function(x,s,e){ cb && cb({status:false, msg: e||s}); }
+    });
+}
+
+var DIFF_LABELS = {
+    3: '⚡ Fast (~&lt;1s) — high traffic, minimal protection',
+    4: '✅ Balanced (1–3s) — recommended default',
+    5: '🔒 Strong (10–30s) — under attack',
+    6: '🔴 Maximum (1–3 min) — critical situation'
+};
+OG.updateDiffDesc = function(){ $('#cfg_diff_desc').html(DIFF_LABELS[parseInt($('#cfg_difficulty').val())]||''); };
+OG._esc = function(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+
+// ===== INIT =====
+OG.init = function(){
+    api('quick_check', {}, function(d){
+        if(d && d.installed) OG.showFullUI();
+        else OG.showInstallScreen();
+    });
+};
+
+OG.showInstallScreen = function(){
+    $('#og_tabs').hide();
+    $('.og-pane').removeClass('active');
+    $('#og_pane_install').show();
+    OG._adjustHeight();
+};
+
+OG.showFullUI = function(){
+    $('#og_pane_install').hide();
+    $('#og_tabs').show();
+    $('.og-tab[data-tab="status"]').click();
+    OG._adjustHeight();
+};
+
+// ===== DIAGNOSE =====
+OG.runDiagnose = function(){
+    $('#og_diag_result').show().html('<span class="og-spin"></span> Checking requirements...');
+    api('diagnose', {}, function(d){
+        if(!d||!d.status){ $('#og_diag_result').html('<div class="og-alert og-alert-danger">Diagnose failed.</div>'); return; }
+        var r = d.results, rows = '', allOk = true;
+        var installMap = { 'pip': 'pip', 'python3_venv': 'venv' };
+        $.each(r, function(k, v){
+            var ok = (v === 'OK' || v.indexOf('OK') === 0 || v.indexOf('Python') === 0 || v.indexOf('Tor') === 0);
+            if(!ok && k !== 'tor' && k !== 'torrc') allOk = false; // tor is optional
+            var actionBtn = '';
+            if(!ok && installMap[k] && v.indexOf('MISSING') !== -1){
+                actionBtn = ' <button class="og-btn og-btn-success og-btn-sm" id="og_dep_btn_'+installMap[k]+'" onclick="OG.installDep(\''+installMap[k]+'\')" style="padding:2px 10px;font-size:11px;margin-left:8px;">📦 Install</button><span id="og_dep_status_'+installMap[k]+'" style="margin-left:6px;font-size:11px;"></span>';
+            }
+            rows += '<tr><td style="padding:3px 8px;font-weight:600;color:#555;">'+k+'</td><td style="padding:3px 8px;font-family:monospace;font-size:12px;color:'+(ok?'#155724':'#721c24')+'">'+v+actionBtn+'</td></tr>';
+        });
+        $('#og_diag_result').html('<div class="og-alert '+(allOk?'og-alert-success':'og-alert-warning')+'" style="padding:10px;"><table style="width:100%;border-collapse:collapse;">'+rows+'</table></div>');
+    });
+};
+
+OG.installDep = function(pkg){
+    var btn = $('#og_dep_btn_'+pkg), status = $('#og_dep_status_'+pkg);
+    btn.prop('disabled', true).text('Installing…');
+    status.html('<span class="og-spin" style="width:12px;height:12px;border-width:2px;"></span>');
+    api('install_dependency', {pkg: pkg}, function(d){
+        if(d && d.status){ status.html('<span style="color:#155724;font-weight:600;">✓ Installed</span>'); btn.hide(); setTimeout(OG.runDiagnose, 1500); }
+        else { status.html('<span style="color:#721c24;">✗ '+(d&&d.msg||'Failed')+'</span>'); btn.prop('disabled', false).text('📦 Retry'); }
+    });
+};
+
+// ===== INSTALL =====
+OG.install = function(){
+    $('#og_install_btn').prop('disabled', true).text('Installing…');
+    $('#og_install_progress').show();
+    $('#og_install_log').text('Starting installer…');
+    api('install_guard', {}, function(d){
+        if(!d || !d.status){ $('#og_install_btn').prop('disabled', false).text('Install Onion Guard'); $('#og_install_progress').hide(); layer.msg((d&&d.msg)||'Failed.', {icon:2, time:8000}); return; }
+        OG._pollInstall();
+    });
+};
+
+OG._pollInstall = function(){
+    api('install_progress', {}, function(d){
+        if(d && d.log){ $('#og_install_log').text(d.log); var box=document.getElementById('og_install_log'); if(box) box.scrollTop=box.scrollHeight; }
+        if(d && d.done){ $('#og_install_btn').prop('disabled',false).text('Install Onion Guard'); layer.msg('Installed!',{icon:1,time:3000}); setTimeout(OG.init,1500); return; }
+        if(d && d.failed){ $('#og_install_btn').prop('disabled',false).text('Retry Install'); layer.msg('Failed. Check log.',{icon:2,time:6000}); return; }
+        setTimeout(OG._pollInstall, 2000);
+    });
+};
+
+OG.uninstall = function(){
+    layer.confirm('Uninstall Onion Guard? This will stop the service and delete all files.',{icon:3,title:'Confirm'},function(idx){
+        layer.close(idx);
+        api('uninstall_guard', {}, function(d){ layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:3000}); OG.init(); });
+    });
+};
+
+OG.updateScript = function(){
+    layer.confirm('Update the server script to the latest version? The service will restart. You should also re-inject vhost snippets afterwards.',{icon:3,title:'Update Server Script'},function(idx){
+        layer.close(idx);
+        layer.msg('Updating…',{icon:16,time:10000,shade:.2});
+        api('update_server_script', {}, function(d){
+            layer.closeAll();
+            layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:5000});
+            if(d&&d.status) setTimeout(OG.loadStatus, 1000);
+        });
+    });
+};
+
+// ===== STATUS =====
+OG.loadStatus = function(){
+    $('#og_status_loading').show(); $('#og_status_content').hide();
+    api('get_status', {}, function(d){
+        $('#og_status_loading').hide();
+        if(!d||!d.status){ $('#og_status_content').html('<div class="og-alert og-alert-danger">Failed to load status.</div>').show(); return; }
+        var running=d.running, s=d.stats||{};
+        var html =
+        '<div class="og-status-grid">'+
+            '<div class="og-card"><div class="og-card-title">Service</div><div class="og-card-value"><span class="og-badge '+(running?'og-badge-green':'og-badge-red')+'">'+(running?'● Running':'● Stopped')+'</span></div></div>'+
+            '<div class="og-card"><div class="og-card-title">Listen Port</div><div class="og-card-value">:'+d.port+'&nbsp;'+(d.port_open?'<span class="og-badge og-badge-blue">Open</span>':'<span class="og-badge og-badge-gray">Closed</span>')+'</div></div>'+
+            '<div class="og-card"><div class="og-card-title">Domains</div><div class="og-card-value"><span class="og-badge og-badge-green">'+d.protected_domains+' protected</span> / '+d.total_domains+' total</div></div>'+
+            '<div class="og-card"><div class="og-card-title">Difficulty / TTL</div><div class="og-card-value">'+d.difficulty+'/6 · '+(d.token_ttl/3600).toFixed(1)+'h</div></div>'+
+        '</div>'+
+        '<div class="og-section-title">Statistics</div>'+
+        '<div class="og-stats-grid" style="grid-template-columns:repeat(3,1fr);">'+
+            '<div class="og-stat-card"><div class="og-stat-num" style="color:#28a745;">'+s.pow_solved+'</div><div class="og-stat-label">✅ PoW Solved</div></div>'+
+            '<div class="og-stat-card"><div class="og-stat-num" style="color:#dc3545;">'+s.blocked+'</div><div class="og-stat-label">🚫 Blocked</div></div>'+
+            '<div class="og-stat-card"><div class="og-stat-num" style="color:#fd7e14;">'+s.rate_limited+'</div><div class="og-stat-label">⏱ Rate Limited</div></div>'+
+        '</div>'+
+        '<div class="og-stats-grid" style="grid-template-columns:repeat(3,1fr);margin-top:8px;">'+
+            '<div class="og-stat-card"><div class="og-stat-num" style="color:#6c3b9e;">'+s.tokens_active+'</div><div class="og-stat-label">🔑 Active Tokens</div></div>'+
+            '<div class="og-stat-card"><div class="og-stat-num" style="color:'+(s.current_difficulty>d.config_difficulty?'#dc3545':'#17a2b8')+';">'+s.current_difficulty+'</div><div class="og-stat-label">⚡ Adaptive Diff (base '+d.config_difficulty+')</div></div>'+
+            '<div class="og-stat-card"><div class="og-stat-num" style="color:#555;">'+s.requests_last_60s+'</div><div class="og-stat-label">📊 Req / 60s</div></div>'+
+        '</div>'+
+        (s.current_difficulty>d.config_difficulty?'<div class="og-alert og-alert-warning" style="margin-bottom:12px;padding:8px 12px;font-size:12px;">⚡ Adaptive difficulty active — high traffic ('+s.requests_last_60s+' req/60s). Difficulty raised to '+s.current_difficulty+'.</div>':'')+
+        '<div class="og-section-title">Service Control</div>'+
+        '<div class="og-btn-group">'+
+            '<button class="og-btn og-btn-success" onclick="OG.svcAction(\'start_service\')">▶ Start</button>'+
+            '<button class="og-btn og-btn-danger" onclick="OG.svcAction(\'stop_service\')">■ Stop</button>'+
+            '<button class="og-btn og-btn-warning" onclick="OG.svcAction(\'restart_service\')">↺ Restart</button>'+
+            '<button class="og-btn og-btn-outline" onclick="OG.loadStatus()">↻ Refresh</button>'+
+        '</div>'+
+        (d.uptime?'<div style="font-size:12px;color:#888;margin-top:6px;">Active since: '+d.uptime+'</div>':'')+
+        '<div style="margin-top:20px;border-top:1px solid #eee;padding-top:14px;">'+
+        '<button class="og-btn og-btn-outline og-btn-sm" style="color:#17a2b8;border-color:#17a2b8;margin-right:10px;" onclick="OG.updateScript()">⬆ Update Server Script</button>'+
+        '<button class="og-btn og-btn-outline og-btn-sm" style="color:#dc3545;border-color:#dc3545;" onclick="OG.uninstall()">🗑 Uninstall Onion Guard</button></div>';
+        $('#og_status_content').html(html).show();
+    });
+};
+
+OG.svcAction = function(action){
+    layer.msg('Working…',{icon:16,time:5000,shade:.2});
+    api(action, {}, function(d){ layer.closeAll(); layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:2500}); if(d&&d.status) setTimeout(OG.loadStatus,800); });
+};
+
+// ===== DOMAINS =====
+OG.loadDomains = function(){
+    $('#og_domains_loading').show(); $('#og_domains_content').hide();
+    api('scan_domains', {}, function(d){
+        $('#og_domains_loading').hide();
+        if(!d||!d.status){ $('#og_domains_content').html('<div class="og-alert og-alert-danger">Failed to scan domains.</div>').show(); return; }
+        var svcs = d.services || [];
+        var html = '<div id="og_domains_alerts"></div>';
+        if(d.new_added > 0){
+            html += '<div class="og-alert og-alert-success" style="margin-bottom:12px;">'+d.new_added+' new domain(s) auto-discovered and enabled.</div>';
+        }
+        if(d.torrc){
+            html += '<div style="font-size:12px;color:#888;margin-bottom:12px;">torrc: <code>'+OG._esc(d.torrc)+'</code></div>';
+        } else {
+            html += '<div class="og-alert og-alert-warning">No torrc found. Configure Tor hidden services first.</div>';
+        }
+        if(svcs.length === 0){
+            html += '<div class="og-alert og-alert-info">No HiddenServiceDir entries found in torrc. Add hidden services and restart Tor.</div>';
+        } else {
+            html += '<table class="og-domain-table"><thead><tr><th>Domain</th><th>Dir</th><th>Ports</th><th>Protection</th><th>Backend</th></tr></thead><tbody>';
+            for(var i=0;i<svcs.length;i++){
+                var s = svcs[i];
+                var isOnion = s.hostname && s.hostname.indexOf('.onion') !== -1;
+                var shortName = isOnion ? (s.hostname.substring(0,16) + '…' + s.hostname.slice(-10)) : s.hostname;
+                var ports = (s.ports||[]).map(function(p){ return p.virtual_port + ' → ' + p.target; }).join('<br>');
+                var toggleHtml = '';
+                if(isOnion){
+                    toggleHtml = '<label class="og-toggle"><input type="checkbox" '+(s.enabled?'checked':'')+' onchange="OG.toggleDomain(\''+OG._esc(s.hostname)+'\', this.checked)"><span class="slider"></span></label>';
+                } else {
+                    toggleHtml = '<span class="og-badge og-badge-gray">N/A</span>';
+                }
+                var backendHtml = '';
+                if(isOnion && s.backend){
+                    var b = s.backend;
+                    backendHtml = '<span style="font-size:11px;font-family:monospace;">'+(b.backend_host||'127.0.0.1')+':'+(b.backend_port||443)+'</span>';
+                    backendHtml += '<br><button class="og-btn og-btn-outline og-btn-sm" style="padding:1px 6px;font-size:10px;margin-top:3px;" onclick="OG.editDomainBackend(\''+OG._esc(s.hostname)+'\')">✏️ Edit</button>';
+                }
+                html += '<tr>'+
+                    '<td><span class="og-domain-name" title="'+OG._esc(s.hostname)+'">'+OG._esc(shortName)+'</span></td>'+
+                    '<td style="font-size:11px;font-family:monospace;max-width:200px;word-break:break-all;">'+OG._esc(s.dir)+'</td>'+
+                    '<td style="font-size:11px;">'+ports+'</td>'+
+                    '<td style="text-align:center;">'+toggleHtml+'</td>'+
+                    '<td>'+backendHtml+'</td>'+
+                '</tr>';
+            }
+            html += '</tbody></table>';
+        }
+        html += '<div class="og-btn-group" style="margin-top:12px;"><button class="og-btn og-btn-outline og-btn-sm" onclick="OG.loadDomains()">↻ Rescan torrc</button></div>';
+        $('#og_domains_content').html(html).show();
+        OG._loadDomainsAlerts();
+    });
+};
+
+OG._loadDomainsAlerts = function(){
+    var $alerts = $('#og_domains_alerts');
+    if(!$alerts.length) return;
+    $alerts.empty();
+    // Backend health: surface poisoned og_backend.conf so the user knows to re-inject.
+    api('check_backend_health', {}, function(d){
+        if(d && d.status && (d.issues||[]).length){
+            var h = '<div class="og-alert og-alert-danger" style="margin-bottom:12px;"><strong>⚠ Backend config issues detected</strong><ul style="margin:6px 0 0 22px;">';
+            d.issues.forEach(function(it){ h += '<li>'+OG._esc(it)+'</li>'; });
+            h += '</ul></div>';
+            $alerts.append(h);
+        }
+    });
+    // Vhost coverage: list .onion ServerNames present in vhost files but not registered in OG.
+    api('scan_vhost_onions', {}, function(d){
+        if(!d || !d.status) return;
+        var uncov = d.uncovered || [];
+        if(uncov.length === 0) return;
+        var h = '<div class="og-alert og-alert-warning" style="margin-bottom:12px;"><strong>⚠ '+uncov.length+' .onion domain(s) detected in vhost files but NOT protected by Onion Guard</strong><br><span style="font-size:11px;color:#888;">Subdomains routed via Apache/nginx vhosts (e.g. <code>portal.example.onion</code>) are not visible from torrc alone — add them here so the PoW gate matches the Host header.</span><ul style="margin:8px 0 0 22px;font-family:monospace;font-size:12px;">';
+        uncov.forEach(function(name){
+            h += '<li style="margin-bottom:4px;">'+OG._esc(name)+' <button class="og-btn og-btn-success og-btn-sm" style="margin-left:8px;padding:2px 10px;font-size:11px;" onclick="OG.protectVhostDomain(\''+OG._esc(name)+'\')">+ Protect</button></li>';
+        });
+        h += '</ul></div>';
+        $alerts.append(h);
+    });
+};
+
+OG.protectVhostDomain = function(domain){
+    api('set_domain_protection', {domain: domain, enabled: 'true'}, function(d){
+        layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:2500});
+        if(d&&d.status){ OG.loadDomains(); }
+    });
+};
+
+OG.toggleDomain = function(domain, enabled){
+    api('set_domain_protection', {domain: domain, enabled: enabled ? 'true' : 'false'}, function(d){
+        layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:2000});
+    });
+};
+
+OG.editDomainBackend = function(domain){
+    // Load current config
+    api('get_domains', {}, function(d){
+        if(!d||!d.status) return;
+        var cfg = (d.domains||{})[domain] || {};
+        var content =
+            '<div style="padding:15px;">'+
+            '<div style="margin-bottom:10px;"><label style="font-weight:600;font-size:13px;">Backend Host</label><br><input type="text" id="dlg_bh" value="'+(cfg.backend_host||'127.0.0.1')+'" style="width:100%;padding:6px;margin-top:4px;border:1px solid #ddd;border-radius:4px;"></div>'+
+            '<div style="margin-bottom:10px;"><label style="font-weight:600;font-size:13px;">Backend Port</label><br><input type="number" id="dlg_bp" value="'+(cfg.backend_port||443)+'" style="width:100%;padding:6px;margin-top:4px;border:1px solid #ddd;border-radius:4px;"></div>'+
+            '<div style="margin-bottom:10px;"><label style="font-weight:600;font-size:13px;">Backend Domain (Host header)</label><br><div style="font-size:11px;color:#888;margin-bottom:4px;">If backend serves multiple sites, set the correct domain. Leave blank to pass the .onion hostname.</div><input type="text" id="dlg_bd" value="'+(cfg.backend_domain||'')+'" placeholder="example.com (optional)" style="width:100%;padding:6px;margin-top:4px;border:1px solid #ddd;border-radius:4px;"></div>'+
+            '</div>';
+        layer.open({
+            type: 1, title: 'Backend Config: ' + domain.substring(0,20) + '…',
+            area: ['420px','320px'], content: content, btn: ['Save','Cancel'],
+            yes: function(idx){
+                api('save_domain_config', {
+                    domain: domain,
+                    backend_host: $('#dlg_bh').val(),
+                    backend_port: $('#dlg_bp').val(),
+                    backend_domain: $('#dlg_bd').val()
+                }, function(d2){
+                    layer.close(idx);
+                    layer.msg((d2&&d2.msg)||'Done.',{icon:d2&&d2.status?1:2,time:2500});
+                    if(d2&&d2.status) OG.loadDomains();
+                });
+            }
+        });
+    });
+};
+
+// ===== CONFIG =====
+OG.loadConfig = function(){
+    $('#og_config_loading').show(); $('#og_config_content').hide();
+    api('get_config', {}, function(d){
+        $('#og_config_loading').hide();
+        if(!d||!d.status){ $('#og_config_content').html('<div class="og-alert og-alert-danger">Failed.</div>').show(); return; }
+        var c = d.config;
+        $('#cfg_difficulty').val(c.difficulty||4); OG.updateDiffDesc();
+        $('#cfg_token_ttl').val(c.token_ttl||3600);
+        $('#cfg_pow_secret').val(c.pow_secret||'');
+        $('#cfg_listen_port').val(c.listen_port||7777);
+        $('#cfg_rate_limit').val(c.rate_limit||60);
+        $('#og_config_content').show();
+    });
+};
+
+OG.saveConfig = function(){
+    var data = {
+        difficulty: parseInt($('#cfg_difficulty').val()), token_ttl: parseInt($('#cfg_token_ttl').val()),
+        pow_secret: $('#cfg_pow_secret').val(), listen_port: parseInt($('#cfg_listen_port').val()),
+        rate_limit: parseInt($('#cfg_rate_limit').val()),
+    };
+    layer.msg('Saving…',{icon:16,time:8000,shade:.2});
+    api('save_config', data, function(d){ layer.closeAll(); layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:3000}); if(d&&d.status) OG.loadConfig(); });
+};
+
+OG.regenSecret = function(){
+    layer.confirm('Regenerate secret? All client tokens will be invalidated.',{icon:3,title:'Confirm'},function(idx){
+        layer.close(idx);
+        api('regenerate_secret', {}, function(d){ layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:3000}); if(d&&d.status) OG.loadConfig(); });
+    });
+};
+
+// ===== BRANDING =====
+OG._syncColor = function(id){
+    // Sync color picker ↔ hex input
+    var swatch = document.getElementById(id);
+    var hex = document.getElementById(id + '_hex');
+    if(!swatch||!hex) return;
+    swatch.addEventListener('input', function(){ hex.value = swatch.value; });
+    hex.addEventListener('input', function(){ if(/^#[0-9a-f]{6}$/i.test(hex.value)) swatch.value = hex.value; });
+};
+
+OG.loadBranding = function(){
+    $('#og_brand_loading').show(); $('#og_brand_content').hide();
+    api('get_branding', {}, function(d){
+        $('#og_brand_loading').hide();
+        if(!d||!d.status){ $('#og_brand_content').html('<div class="og-alert og-alert-danger">Failed.</div>').show(); return; }
+        var b = d.branding;
+        $('#br_page_title').val(b.page_title||'Security Verification');
+        $('#br_subtitle').val(b.subtitle||'');
+        var colors = ['primary_color','background_color','card_color','text_color'];
+        for(var i=0;i<colors.length;i++){
+            var c = colors[i], val = b[c]||'';
+            $('#br_'+c).val(val);
+            $('#br_'+c+'_hex').val(val);
+            OG._syncColor('br_'+c);
+        }
+        $('#br_show_branding').prop('checked', b.show_branding !== false);
+        // Logo preview
+        if(b.has_logo && b.logo_data){
+            var src = 'data:' + (b.logo_mime||'image/png') + ';base64,' + b.logo_data;
+            $('#br_logo_img').attr('src', src);
+            $('#br_logo_preview').show();
+            $('#br_logo_dropzone').hide();
+            OG._logoDataUri = src;
+        } else {
+            $('#br_logo_preview').hide();
+            $('#br_logo_dropzone').show();
+            OG._logoDataUri = '';
+        }
+        $('#og_brand_content').show();
+        OG.previewBranding();
+    });
+};
+
+OG._logoDataUri = '';
+
+OG.handleLogoSelect = function(input){
+    if(input.files && input.files[0]) OG._uploadLogoFile(input.files[0]);
+};
+
+OG.handleLogoDrop = function(e){
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if(files && files[0]) OG._uploadLogoFile(files[0]);
+};
+
+OG._uploadLogoFile = function(file){
+    if(file.size > 2*1024*1024){ layer.msg('File too large (max 2 MB).',{icon:2,time:3000}); return; }
+    var allowed = ['image/png','image/svg+xml','image/jpeg','image/webp','image/gif'];
+    if(allowed.indexOf(file.type) === -1){ layer.msg('Unsupported format. Use PNG, SVG, JPG, WebP, or GIF.',{icon:2,time:4000}); return; }
+    var reader = new FileReader();
+    reader.onload = function(e){
+        var b64 = e.target.result.split(',')[1];
+        var dataUri = e.target.result;
+        $('#br_logo_status').html('<span class="og-spin" style="width:12px;height:12px;border-width:2px;"></span> Uploading…');
+        api('upload_logo', {data: b64, mime: file.type}, function(d){
+            if(d && d.status){
+                $('#br_logo_status').html('<span style="color:#155724;">✓ Uploaded</span>');
+                $('#br_logo_img').attr('src', dataUri);
+                $('#br_logo_preview').show();
+                $('#br_logo_dropzone').hide();
+                OG._logoDataUri = dataUri;
+                OG.previewBranding();
+                setTimeout(function(){ $('#br_logo_status').html(''); }, 3000);
+            } else {
+                $('#br_logo_status').html('<span style="color:#721c24;">✗ '+(d&&d.msg||'Upload failed')+'</span>');
+            }
+        });
+    };
+    reader.readAsDataURL(file);
+};
+
+OG.deleteLogo = function(){
+    layer.confirm('Remove the logo?',{icon:3,title:'Confirm'},function(idx){
+        layer.close(idx);
+        api('delete_logo', {}, function(d){
+            layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:2500});
+            if(d&&d.status){
+                $('#br_logo_preview').hide();
+                $('#br_logo_dropzone').show();
+                OG._logoDataUri = '';
+                OG.previewBranding();
+            }
+        });
+    });
+};
+
+OG.previewBranding = function(){
+    var color = $('#br_primary_color_hex').val() || '#00bf80';
+    var bg    = $('#br_background_color_hex').val() || '#0a0a0a';
+    var card  = $('#br_card_color_hex').val() || '#111111';
+    var txt   = $('#br_text_color_hex').val() || '#e0e0e0';
+    var title = OG._esc($('#br_page_title').val() || 'Security Verification');
+    var showBr = $('#br_show_branding').is(':checked');
+    var logoH = OG._logoDataUri ? '<div style="margin-bottom:16px;"><img src="'+OG._logoDataUri+'" style="height:24px;"></div>' : '';
+    var brandH = showBr ? '<div style="font-size:9px;color:#444;margin-top:14px;">Provided by <span style="color:#555;">Impreza Host</span></div>' : '';
+    $('#og_brand_preview').attr('style','background:'+bg+';border-radius:8px;padding:24px;text-align:center;border:1px solid #333;');
+    $('#og_brand_preview').html(
+        '<div style="background:'+card+';border:1px solid #1e1e1e;border-radius:10px;padding:28px 24px;max-width:300px;margin:0 auto;">'+
+        logoH+
+        '<div style="width:36px;height:36px;background:'+color+'18;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;border:1px solid '+color+'33;">'+
+            '<svg viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="1.8" style="width:18px;height:18px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'+
+        '</div>'+
+        '<div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:6px;">'+title+'</div>'+
+        '<div style="height:3px;background:#1a1a1a;border-radius:3px;margin-bottom:8px;"><div style="height:100%;width:60%;background:linear-gradient(90deg,'+color+','+color+'cc);border-radius:3px;"></div></div>'+
+        '<div style="font-size:10px;color:'+txt+';">Solving challenge…</div>'+
+        brandH+
+        '</div>'
+    );
+};
+
+OG.saveBranding = function(){
+    var data = {
+        page_title: $('#br_page_title').val(),
+        subtitle: $('#br_subtitle').val(),
+        primary_color: $('#br_primary_color_hex').val(),
+        background_color: $('#br_background_color_hex').val(),
+        card_color: $('#br_card_color_hex').val(),
+        text_color: $('#br_text_color_hex').val(),
+        show_branding: $('#br_show_branding').is(':checked') ? 'true' : 'false',
+    };
+    layer.msg('Saving…',{icon:16,time:5000,shade:.2});
+    api('save_branding', data, function(d){ layer.closeAll(); layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:3000}); });
+};
+
+// ===== FIREWALL =====
+OG.loadFirewall = function(){
+    $('#og_fw_loading').show(); $('#og_fw_content').hide();
+    api('get_blocklist', {}, function(d){
+        $('#og_fw_loading').hide();
+        if(!d||!d.status){ $('#og_fw_content').html('<div class="og-alert og-alert-danger">Failed.</div>').show(); return; }
+        OG._renderPaths(d.blocklist.paths||[]);
+        OG._renderAgents(d.blocklist.user_agents||[]);
+        $('#og_fw_content').show();
+    });
+};
+OG._renderPaths = function(paths){
+    var html = paths.map(function(p){ return '<span class="og-tag">'+OG._esc(p)+'<span class="og-tag-del" onclick="OG.removePath(\''+OG._esc(p)+'\')">×</span></span>'; }).join('');
+    $('#fw_paths_list').html(html||'<span style="font-size:12px;color:#888;">No paths blocked.</span>');
+};
+OG._renderAgents = function(agents){
+    var html = agents.map(function(a){ return '<span class="og-tag">'+OG._esc(a)+'<span class="og-tag-del" onclick="OG.removeAgent(\''+OG._esc(a)+'\')">×</span></span>'; }).join('');
+    $('#fw_agents_list').html(html||'<span style="font-size:12px;color:#888;">No user-agents blocked.</span>');
+};
+OG.addPath = function(){
+    var p=$('#fw_new_path').val().trim(); if(!p){layer.msg('Enter a path.',{icon:2});return;}
+    api('add_blocked_path',{path:p},function(d){layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:1500});$('#fw_new_path').val('');if(d&&d.status)OG.loadFirewall();});
+};
+OG.removePath = function(p){ api('remove_blocked_path',{path:p},function(d){layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:1200});if(d&&d.status)OG.loadFirewall();}); };
+OG.addAgent = function(){
+    var a=$('#fw_new_agent').val().trim(); if(!a){layer.msg('Enter a user-agent.',{icon:2});return;}
+    api('add_blocked_agent',{agent:a},function(d){layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:1500});$('#fw_new_agent').val('');if(d&&d.status)OG.loadFirewall();});
+};
+OG.removeAgent = function(a){ api('remove_blocked_agent',{agent:a},function(d){layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:1200});if(d&&d.status)OG.loadFirewall();}); };
+
+// ===== APACHE =====
+OG._ws = 'unknown';
+
+OG.loadWebServer = function(){
+    $('#og_ws_detecting').show(); $('#og_ws_content').hide();
+    api('detect_webserver', {}, function(d){
+        OG._ws = (d && d.webserver) || 'unknown';
+        var label = OG._ws === 'nginx' ? '🟢 nginx' : (OG._ws === 'apache' ? '🟢 Apache' : '⚠ Unknown');
+        var cls = OG._ws === 'unknown' ? 'og-badge-red' : 'og-badge-green';
+        $('#og_ws_badge').html(label).attr('class', 'og-badge ' + cls);
+        if(OG._ws === 'nginx'){
+            $('#og_modules_title').text('nginx Config Check');
+            $('#og_modules_desc').text('Verify that the nginx configuration is valid.');
+            $('#og_snippet_desc').text('Add these lines inside each .onion server { } block:');
+        } else {
+            $('#og_modules_title').text('Required Apache Modules');
+            $('#og_modules_desc').text('These modules must be active for the proxy to work.');
+            $('#og_snippet_desc').html('Add these lines <strong>inside</strong> each .onion <code>&lt;VirtualHost&gt;</code> block:');
+        }
+        $('#og_ws_detecting').hide(); $('#og_ws_content').show();
+        // Load snippet
+        api('get_webserver_snippet', {}, function(d2){
+            if(d2 && d2.status) $('#og_ws_snippet').text(d2.snippet||'');
+            else $('#og_ws_snippet').text('Error loading snippet');
+        });
+        OG.checkModules();
+        OG.scanVhosts();
+    });
+};
+
+OG.checkModules = function(){
+    $('#og_modules_result').html('<span class="og-spin"></span> Checking...');
+    api('check_webserver_modules', {}, function(d){
+        if(!d||!d.status){ $('#og_modules_result').html('<div class="og-alert og-alert-danger">Check failed.</div>'); return; }
+        var mods=d.modules||{}, rows='';
+        $.each(mods, function(mod, state){
+            var ok=state==='OK';
+            var label = (d.webserver==='nginx') ? mod : 'mod_'+mod;
+            rows+='<tr><td style="padding:4px 10px;font-family:monospace;font-weight:600;">'+label+'</td><td style="padding:4px 10px;"><span class="og-badge '+(ok?'og-badge-green':'og-badge-red')+'">'+state+'</span></td></tr>';
+        });
+        var html='<div class="og-alert '+(d.all_ok?'og-alert-success':'og-alert-warning')+'" style="padding:10px;"><strong>'+(d.all_ok?'All checks passed.':'Issues found.')+'</strong><table style="margin-top:8px;border-collapse:collapse;">'+rows+'</table></div>';
+        $('#og_modules_result').html(html);
+        $('#og_enable_btn').toggle(!d.all_ok);
+    });
+};
+OG.enableModules = function(){
+    $('#og_enable_result').html('<span class="og-spin"></span> Working...');
+    api('enable_webserver_modules', {}, function(d){
+        var cls=(d&&d.status)?'og-alert-success':'og-alert-danger';
+        var logs=(d&&d.logs)?'<br><small>'+(d.logs||[]).join('<br>')+'</small>':'';
+        $('#og_enable_result').html('<div class="og-alert '+cls+'">'+(d&&d.msg||'Done.')+logs+'</div>');
+        if(d&&d.status) setTimeout(OG.checkModules, 1000);
+    });
+};
+OG.testConnection = function(){
+    $('#og_test_result').html('<span class="og-spin"></span> Testing…');
+    api('test_connection', {}, function(d){
+        var cls=(d&&d.status)?'og-alert-success':'og-alert-danger';
+        $('#og_test_result').html('<div class="og-alert '+cls+'">'+(d&&d.msg||'Error')+'</div>');
+    });
+};
+
+// ===== VHOST INJECTION =====
+OG.scanVhosts = function(){
+    $('#og_vhost_result').html('<span class="og-spin"></span> Scanning vhost files...');
+    $('#og_inject_all_btn').hide();
+    api('scan_vhosts', {}, function(d){
+        if(!d||!d.status){
+            $('#og_vhost_result').html('<div class="og-alert og-alert-danger">'+(d&&d.msg||'Scan failed.')+'</div>');
+            return;
+        }
+        var vhosts = d.vhosts || [];
+        if(!vhosts.length){
+            $('#og_vhost_result').html('<div class="og-alert og-alert-info">No .conf files found in <code>'+d.vhost_dir+'</code>.</div>');
+            return;
+        }
+        var hasMissing = false;
+        var rows = '';
+        for(var i=0; i<vhosts.length; i++){
+            var v = vhosts[i];
+            var ok = v.has_snippet;
+            if(!ok) hasMissing = true;
+            var statusBadge = ok
+                ? '<span class="og-badge og-badge-green">✓ Active</span>'
+                : '<span class="og-badge og-badge-red">✗ Missing</span>';
+            var actionBtn = '';
+            if(ok){
+                actionBtn = '<button class="og-btn og-btn-outline og-btn-sm" style="padding:2px 8px;font-size:11px;" '+
+                    'onclick="OG.removeVhost(\''+v.path.replace(/'/g,"\\'")+'\')">Remove</button>';
+            } else if(!v.error){
+                actionBtn = '<button class="og-btn og-btn-success og-btn-sm" style="padding:2px 8px;font-size:11px;" '+
+                    'onclick="OG.injectVhost(\''+v.path.replace(/'/g,"\\'")+'\')">Inject</button>';
+            }
+            rows += '<tr>'+
+                '<td style="padding:4px 10px;font-family:monospace;font-size:12px;">'+v.file+'</td>'+
+                '<td style="padding:4px 10px;text-align:center;">'+statusBadge+'</td>'+
+                '<td style="padding:4px 10px;text-align:center;">'+actionBtn+'</td>'+
+                '</tr>';
+        }
+        var html = '<div style="font-size:12px;color:#888;margin-bottom:6px;">Directory: <code>'+d.vhost_dir+'</code></div>'+
+            '<table style="width:100%;border-collapse:collapse;">'+
+            '<thead><tr><th style="padding:4px 10px;text-align:left;font-size:12px;color:#777;border-bottom:1px solid #eee;">File</th>'+
+            '<th style="padding:4px 10px;text-align:center;font-size:12px;color:#777;border-bottom:1px solid #eee;">Status</th>'+
+            '<th style="padding:4px 10px;text-align:center;font-size:12px;color:#777;border-bottom:1px solid #eee;">Action</th></tr></thead>'+
+            '<tbody>'+rows+'</tbody></table>';
+        $('#og_vhost_result').html(html);
+        $('#og_inject_all_btn').toggle(hasMissing);
+    });
+};
+
+OG.injectVhost = function(path){
+    layer.confirm('Inject Onion Guard snippet into <b>'+path.split('/').pop()+'</b>?', {icon:3, title:'Confirm'}, function(idx){
+        layer.close(idx);
+        $('#og_vhost_result').append('<div style="margin-top:6px;"><span class="og-spin"></span> Injecting...</div>');
+        api('inject_vhost_snippet', {target: path}, function(d){
+            layer.msg((d&&d.msg||'Done'), {icon: d&&d.status?1:2, time:3000});
+            setTimeout(OG.scanVhosts, 800);
+        });
+    });
+};
+
+OG.injectAll = function(){
+    layer.confirm('Inject Onion Guard snippet into <b>all</b> vhosts that are missing it?', {icon:3, title:'Confirm'}, function(idx){
+        layer.close(idx);
+        $('#og_vhost_result').append('<div style="margin-top:6px;"><span class="og-spin"></span> Injecting all...</div>');
+        api('inject_vhost_snippet', {target: 'all'}, function(d){
+            layer.msg((d&&d.msg||'Done'), {icon: d&&d.status?1:2, time:3000});
+            setTimeout(OG.scanVhosts, 800);
+        });
+    });
+};
+
+OG.removeVhost = function(path){
+    layer.confirm('Remove Onion Guard snippet from <b>'+path.split('/').pop()+'</b>?', {icon:3, title:'Confirm'}, function(idx){
+        layer.close(idx);
+        api('inject_vhost_snippet', {target: path, remove: true}, function(d){
+            layer.msg((d&&d.msg||'Done'), {icon: d&&d.status?1:2, time:3000});
+            setTimeout(OG.scanVhosts, 800);
+        });
+    });
+};
+
+// ===== LOGS =====
+OG.loadLogs = function(){
+    var lines=$('#log_lines').val()||100;
+    $('#og_log_content').text('Loading…');
+    api('get_logs',{lines:lines},function(d){
+        if(d&&d.status){ $('#og_log_content').text(d.logs); $('#og_log_source').text('Source: '+d.source); var box=document.getElementById('og_log_content'); box.scrollTop=box.scrollHeight; }
+        else { $('#og_log_content').text(d&&d.logs||'No logs found.'); $('#og_log_source').text(''); }
+    });
+};
+OG.clearStats = function(){ api('clear_stats',{},function(d){layer.msg((d&&d.msg)||'Done.',{icon:d&&d.status?1:2,time:2000});}); };
+
+// ===== UTILITY =====
+OG.copyText = function(text){
+    if(navigator.clipboard) navigator.clipboard.writeText(text).then(function(){layer.msg('Copied!',{icon:1,time:1500});});
+    else { var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);layer.msg('Copied!',{icon:1,time:1500}); }
+};
+
+// ===== TABS =====
+$(document).on('click', '.og-tab', function(){
+    var tab=$(this).data('tab');
+    $('.og-tab').removeClass('active'); $(this).addClass('active');
+    $('.og-pane').removeClass('active'); $('#og_pane_'+tab).addClass('active');
+    if(tab==='status')   OG.loadStatus();
+    if(tab==='domains')  OG.loadDomains();
+    if(tab==='config')   OG.loadConfig();
+    if(tab==='branding') OG.loadBranding();
+    if(tab==='firewall') OG.loadFirewall();
+    if(tab==='webserver') OG.loadWebServer();
+    if(tab==='logs')     OG.loadLogs();
+    if(OG._adjustHeight) OG._adjustHeight();
+});
+
+// ===== CLOSE BUTTON FIX =====
+(function fixClose(){
+    setTimeout(function(){
+        var $layer=$('#onion_guard_app').closest('.layui-layer');
+        if(!$layer.length) return;
+        var layerIdx=$layer.attr('times');
+        if($layer.children('.layui-layer-setwin').length>0) return;
+        var $sw=$('<span class="layui-layer-setwin"><a class="layui-layer-ico layui-layer-close layui-layer-close2" href="javascript:;"></a></span>');
+        $layer.append($sw);
+        $sw.find('.layui-layer-close').on('click',function(e){e.stopPropagation();layer.close(layerIdx);});
+    },300);
+})();
+
+// ===== INIT =====
+$(function(){
+    $('#onion_guard_app').show();
+    OG._adjustHeight = function(){
+        var $app=$('#onion_guard_app'),$body=$('#og_body'),$tabs=$('#og_tabs');
+        var $container=$app.closest('.layui-layer-content');
+        if(!$container.length) $container=$app.parent();
+        var containerH=$container.height()||$(window).height()*.85;
+        var tabsH=$tabs.is(':visible')?($tabs.outerHeight()||42):0;
+        var avail=containerH-tabsH-10;
+        $body.css('height',(avail>150?avail:500)+'px');
+    };
+    setTimeout(OG._adjustHeight,100);
+    setTimeout(OG._adjustHeight,500);
+    $(window).on('resize.ogPlugin',OG._adjustHeight);
+    OG.init();
+});
+})();
+</script>
+</div>
