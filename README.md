@@ -55,7 +55,7 @@ You can use either plugin standalone, but installing both gives you a complete p
 
 - Path blocklist (defaults include `/wp-admin/`, `/.env`, `/.git/`, `/xmlrpc.php`, ...)
 - User-Agent blocklist (`sqlmap`, `nikto`, `nmap`, `dirbuster`, `gobuster`, `wfuzz`, ...)
-- Per-IP rate limit, 2-minute sliding window (default 120 req)
+- Per-circuit rate limit, 2-minute sliding window (default 120 req), when the service exports circuit ids; a single shared bucket otherwise
 - All lists editable from the panel
 
 ### Branding
@@ -153,7 +153,8 @@ This stops the service, removes `/opt/onion_guard/`, deletes the backend vhost a
 | `/opt/onion_guard/logo/` | Locally-stored logo |
 | `/opt/onion_guard/venv/` | Python virtualenv (Flask, httpx, PyJWT, Pillow) |
 | `/etc/systemd/system/onion_guard.service` | systemd unit |
-| `/tmp/onion_guard_stats.json` | Live runtime stats |
+| `/run/onion_guard/stats.json` | Live runtime stats (systemd runtime directory, 0700) |
+| `<vhost dir>/og_circuit.conf` | Shared nginx listener for Tor connections carrying a PROXY header |
 
 ---
 
@@ -179,6 +180,7 @@ This stops the service, removes `/opt/onion_guard/`, deletes the backend vhost a
 | [httpx](https://www.python-httpx.org/) | HTTP client for the reverse proxy |
 | [PyJWT](https://pyjwt.readthedocs.io/) | JWT issue and verify |
 | [Pillow](https://python-pillow.org/) | Server-side PNG CAPTCHA rendering |
+| [waitress](https://docs.pylonsproject.org/projects/waitress/) | Production WSGI server (pure Python, no compiler needed) |
 
 All installed into the plugin's own venv at `/opt/onion_guard/venv/`. No system-Python pollution.
 
@@ -188,7 +190,7 @@ All installed into the plugin's own venv at `/opt/onion_guard/venv/`. No system-
 
 - The JWT secret is generated on first run and stored in `config.json` (root-only). Rotate via **Config --> Regenerate Secret**.
 - `/opt/onion_guard/` is `chmod 750`, owned by root.
-- PoW solutions are verified server-side; no client-side trust.
+- PoW challenges are HMAC-signed by the server, verified in constant time, time-limited and single-use. A solution is only accepted against a challenge this server issued, and only once.
 - CAPTCHA tokens are single-use with a 5-minute TTL; replay-safe.
 - All challenge-page assets (logo, CAPTCHA) are served locally - no third-party requests.
 
@@ -197,3 +199,9 @@ All installed into the plugin's own venv at `/opt/onion_guard/venv/`. No system-
 ## Author
 
 Built and maintained by [Impreza Host](https://imprezahost.com). Issues and pull requests welcome.
+
+---
+
+## License
+
+Released under the MIT License. See [LICENSE](LICENSE).

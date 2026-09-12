@@ -2,7 +2,7 @@
     "title": "Onion Guard",
     "name": "onion_guard",
     "ps": "Multi-domain PoW protection for .onion hidden services",
-    "versions": "2.2",
+    "versions": "2.5",
     "checks": "/www/server/panel/plugin/onion_guard",
     "author": "Impreza Host",
     "home": "",

@@ -473,6 +473,13 @@ OG.loadStatus = function(){
             '<div class="og-stat-card"><div class="og-stat-num" style="color:'+(s.current_difficulty>d.config_difficulty?'#dc3545':'#17a2b8')+';">'+s.current_difficulty+'</div><div class="og-stat-label">⚡ Adaptive Diff (base '+d.config_difficulty+')</div></div>'+
             '<div class="og-stat-card"><div class="og-stat-num" style="color:#555;">'+s.requests_last_60s+'</div><div class="og-stat-label">📊 Req / 60s</div></div>'+
         '</div>'+
+        // One bucket under real traffic means every visitor is sharing the
+        // fallback, i.e. no hidden service is exporting circuit ids yet.
+        (s.requests_last_60s>0 && (s.rate_buckets||0)<=1 ?
+            '<div class="og-alert og-alert-warning" style="margin:8px 0 12px;padding:8px 12px;font-size:12px;">⏱ Rate limiting is running on a <b>single shared bucket</b> — every visitor counts against the same limit, so one abusive circuit can push everyone to 429. Enable <b>Circuit rate limiting</b> per domain in Tor Manager to split it per Tor circuit.</div>'
+          : (s.rate_buckets||0)>1 ?
+            '<div class="og-alert" style="margin:8px 0 12px;padding:8px 12px;font-size:12px;background:#e8f5e9;border:1px solid #a5d6a7;">⏱ Per-circuit rate limiting active — <b>'+s.rate_buckets+'</b> circuits tracked on port '+(d.circuit_port||7779)+'.</div>'
+          : '')+
         (s.current_difficulty>d.config_difficulty?'<div class="og-alert og-alert-warning" style="margin-bottom:12px;padding:8px 12px;font-size:12px;">⚡ Adaptive difficulty active — high traffic ('+s.requests_last_60s+' req/60s). Difficulty raised to '+s.current_difficulty+'.</div>':'')+
         '<div class="og-section-title">Service Control</div>'+
         '<div class="og-btn-group">'+

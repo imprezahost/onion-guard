@@ -1,10 +1,10 @@
 #!/bin/bash
-# Onion Guard Plugin v2.2 - Install Script
+# Onion Guard Plugin v2.5 - Install Script
 
 PLUGIN_DIR="/www/server/panel/plugin/onion_guard"
 ICON_SOURCE="${PLUGIN_DIR}/icon.png"
 
-echo "Installing Onion Guard v2.2..."
+echo "Installing Onion Guard v2.5..."
 
 # Clear Python cache
 find "${PLUGIN_DIR}" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null
@@ -44,5 +44,5 @@ chmod -R 755 "${PLUGIN_DIR}"
 chmod 644 "${PLUGIN_DIR}"/*.py "${PLUGIN_DIR}"/*.html "${PLUGIN_DIR}"/*.json 2>/dev/null
 
 echo ""
-echo "Onion Guard v2.2 installed. Restart aaPanel: bt restart"
+echo "Onion Guard v2.5 installed. Restart aaPanel: bt restart"
 echo "NOTE: Clear browser cache (Ctrl+Shift+R) to see the plugin icon."

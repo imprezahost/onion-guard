@@ -1,5 +1,5 @@
 # coding: utf-8
-# Onion Guard - aaPanel Plugin v2.2
+# Onion Guard - aaPanel Plugin v2.5
 # PoW protection for .onion hidden services (multi-domain)
 
 import sys, os, json, re, subprocess, time, secrets, hashlib, signal, glob
@@ -14,12 +14,16 @@ class onion_guard_main:
     __server_script = '/opt/onion_guard/server.py'
     __venv_python   = '/opt/onion_guard/venv/bin/python'
     __venv_pip      = '/opt/onion_guard/venv/bin/pip'
-    __stats_file    = '/tmp/onion_guard_stats.json'
+    # Runtime and install scratch files live under root-owned directories, not
+    # /tmp. A predictable name in a world-writable directory is a symlink target
+    # for any local account, and the installer below is executed as root.
+    __stats_file    = '/run/onion_guard/stats.json'
     __blocklist_file= '/opt/onion_guard/blocklist.json'
     __branding_file = '/opt/onion_guard/branding.json'
     __logo_dir      = '/opt/onion_guard/logo'
-    __install_log   = '/tmp/onion_guard_install.log'
-    __install_pid   = '/tmp/onion_guard_install.pid'
+    __install_log   = '/opt/onion_guard/install.log'
+    __install_pid   = '/opt/onion_guard/install.pid'
+    __installer_sh  = '/opt/onion_guard/installer.sh'
 
     __torrc_paths = ['/etc/tor/torrc', '/usr/local/etc/tor/torrc', '/etc/torrc']
 
@@ -29,6 +33,7 @@ class onion_guard_main:
         'token_ttl':   3600,
         'listen_port': 7777,
         'internal_port': 7780,
+        'circuit_port': 7779,
         'rate_limit':  120,
         'enabled':     True,
         'domains':     {},
@@ -335,6 +340,12 @@ class onion_guard_main:
             except: pass
         if 'backend_domain' in args:
             domains[domain]['backend_domain'] = str(args['backend_domain']).strip()
+        if 'verify_tls' in args:
+            # Only meaningful for a backend off this machine; loopback backends
+            # are reached over plain HTTP on the internal port.
+            v = args['verify_tls']
+            domains[domain]['verify_tls'] = bool(v) if isinstance(v, bool) \
+                else str(v).strip().lower() in ('1', 'true', 'yes', 'on')
         cfg['domains'] = domains
         ok, err = self._write_json(self.__config_file, cfg)
         if not ok:
@@ -371,7 +382,7 @@ class onion_guard_main:
             return json.dumps({'status': False, 'msg': 'Cannot list ' + vhost_dir + ': ' + str(e)})
         found = set()
         for fname in files:
-            if fname == self.__backend_conf:
+            if fname in (self.__backend_conf, self.__circuit_conf):
                 continue
             path = os.path.join(vhost_dir, fname)
             ok, content, _ = self._read_file_shell(path)
@@ -503,12 +514,17 @@ class onion_guard_main:
     # =========================================================================
     def install_guard(self, args=None):
         try:
+            # 0700 and root-owned before anything is written into it: this script
+            # is run as root moments later, and a predictable path under /tmp
+            # would let any local account swap it or point it elsewhere first.
+            os.makedirs(self.__install_dir, mode=0o700, exist_ok=True)
+            os.chmod(self.__install_dir, 0o700)
             self._exec('rm -f %s %s' % (self.__install_log, self.__install_pid))
             script = self._build_install_sh()
-            script_path = '/tmp/onion_guard_installer.sh'
+            script_path = self.__installer_sh
             with open(script_path, 'w') as f:
                 f.write(script)
-            os.chmod(script_path, 0o755)
+            os.chmod(script_path, 0o700)
             cmd = 'nohup bash %s > %s 2>&1 & echo $!' % (script_path, self.__install_log)
             pid_out, _, c = self._exec(cmd)
             if pid_out.strip():
@@ -542,6 +558,9 @@ class onion_guard_main:
         return (
             '[Unit]\nDescription=Onion Guard - PoW Protection Server\nAfter=network.target tor.service\n\n'
             '[Service]\nType=simple\nUser=root\nWorkingDirectory={install_dir}\n'
+            # systemd creates and tears down /run/onion_guard for us, so the live
+            # stats file is not a predictable name in a world-writable directory.
+            'RuntimeDirectory=onion_guard\nRuntimeDirectoryMode=0700\n'
             'Environment="CONFIG_FILE={config_file}"\n'
             'Environment="BLOCKLIST_FILE={blocklist_file}"\n'
             'Environment="BRANDING_FILE={branding_file}"\n'
@@ -604,11 +623,11 @@ log "  OK"
 log "[3/7] Creating Python venv..."
 python3 -m venv --without-pip {install_dir}/venv >> "$LOG" 2>&1 || {{ log "[FAILED] venv creation failed."; exit 1; }}
 log "  OK"
-log "[4/7] Installing Python packages (flask, httpx, PyJWT, Pillow)..."
+log "[4/7] Installing Python packages (flask, waitress, httpx, PyJWT, Pillow)..."
 VENV_PYTHON="{install_dir}/venv/bin/python"
 $VENV_PYTHON -m ensurepip --upgrade >> "$LOG" 2>&1 || true
 $VENV_PYTHON -m pip install --upgrade pip >> "$LOG" 2>&1 || true
-$VENV_PYTHON -m pip install flask httpx PyJWT Pillow >> "$LOG" 2>&1 || {{ log "[FAILED] pip install failed."; exit 1; }}
+$VENV_PYTHON -m pip install flask waitress httpx PyJWT Pillow >> "$LOG" 2>&1 || {{ log "[FAILED] pip install failed."; exit 1; }}
 log "  OK"
 log "[5/7] Writing configuration files..."
 cat > {config_file} << 'CONFIG_EOF'
@@ -652,6 +671,13 @@ fi
         )
         return sh
 
+    def _purge_legacy_tmp(self):
+        """Remove scratch files that earlier versions wrote to /tmp."""
+        self._exec('rm -f /tmp/onion_guard_installer.sh /tmp/onion_guard_install.log '
+                   '/tmp/onion_guard_install.pid /tmp/onion_guard_stats.json '
+                   '/tmp/onion_guard.sh 2>/dev/null')
+        return leaked
+
     def uninstall_guard(self, args=None):
         self._exec('systemctl stop %s 2>/dev/null' % self.__service_name)
         self._exec('systemctl disable %s 2>/dev/null' % self.__service_name)
@@ -664,6 +690,7 @@ fi
             backend_path = os.path.join(vhost_dir, self.__backend_conf)
             if self._file_exists(backend_path):
                 self._exec('rm -f ' + backend_path)
+            self._remove_circuit_conf(vhost_dir)
         return json.dumps({'status': True, 'msg': 'Onion Guard uninstalled.'})
 
     def update_server_script(self, args=None):
@@ -671,17 +698,26 @@ fi
         if not self._file_exists(self.__server_script):
             return json.dumps({'status': False, 'msg': 'Onion Guard is not installed.'})
         cfg = self._read_json(self.__config_file, dict(self.__default_config))
+        self._purge_legacy_tmp()
         # Ensure internal_port exists in config
-        if 'internal_port' not in cfg:
-            cfg['internal_port'] = 7780
+        if 'internal_port' not in cfg or 'circuit_port' not in cfg:
+            cfg.setdefault('internal_port', 7780)
+            cfg.setdefault('circuit_port', 7779)
             self._write_json(self.__config_file, cfg)
-        # Ensure Pillow is present (added in v2.1 for no-JS CAPTCHA fallback)
+        # Packages added after the original install: Pillow in v2.1 for the no-JS
+        # CAPTCHA, waitress in v2.5 so the service stops running on Flask's
+        # development server. Existing installs only get them here.
         extra_msg = ''
-        _, _, c_pil = self._exec('%s -c "import PIL" 2>/dev/null' % self.__venv_python)
-        if c_pil != 0:
-            _, e_pil, c_inst = self._exec('%s -m pip install Pillow 2>&1' % self.__venv_python, timeout=180)
+        for module, package, consequence in (
+                ('PIL', 'Pillow', 'the no-JS CAPTCHA will not render'),
+                ('waitress', 'waitress', 'the service falls back to the Flask development server')):
+            _, _, c_have = self._exec('%s -c "import %s" 2>/dev/null' % (self.__venv_python, module))
+            if c_have == 0:
+                continue
+            _, err, c_inst = self._exec('%s -m pip install %s 2>&1' % (self.__venv_python, package),
+                                        timeout=180)
             if c_inst != 0:
-                extra_msg = ' Pillow install failed (no-JS CAPTCHA will not render): ' + e_pil
+                extra_msg += ' %s install failed (%s): %s' % (package, consequence, err)
         # Write the latest server.py
         server_src = self._get_server_script_src()
         try:
@@ -745,7 +781,12 @@ fi
                 'rate_limited': stats.get('rate_limited', 0), 'tokens_active': stats.get('tokens_active', 0),
                 'current_difficulty': stats.get('current_difficulty', cfg.get('difficulty', 4)),
                 'requests_last_60s': stats.get('requests_last_60s', 0),
-            }
+                # >1 means Tor is sending circuit ids, so rate limiting is per
+                # circuit. Stuck at 1 under real traffic means every request is
+                # sharing the fallback bucket and the migration is incomplete.
+                'rate_buckets': stats.get('rate_buckets', 0),
+            },
+            'circuit_port': cfg.get('circuit_port', 7779)
         })
 
     # =========================================================================
@@ -851,6 +892,9 @@ fi
     __backend_marker   = '# >>> Onion Guard Backend'
     __backend_end      = '# <<< Onion Guard Backend'
     __backend_conf     = 'og_backend.conf'
+    __circuit_conf     = 'og_circuit.conf'
+    __circuit_marker   = '# >>> Onion Guard Circuit Listener'
+    __circuit_end      = '# <<< Onion Guard Circuit Listener'
     __nginx_disabled   = '# OG_OFF# '       # prefix used to comment‑out original location blocks
 
     # ------------- detection ------------------------------------------------
@@ -902,7 +946,10 @@ fi
             "    " + self.__snippet_end,
         ])
 
-    def _build_nginx_snippet(self, port):
+    def _build_nginx_snippet(self, port, circuit_port=None):
+        if circuit_port is None:
+            cfg = self._read_json(self.__config_file, dict(self.__default_config))
+            circuit_port = int(cfg.get("circuit_port", 7779))
         return "\n".join([
             "    " + self.__snippet_marker,
             "    location ^~ / {",
@@ -912,11 +959,112 @@ fi
             "        proxy_set_header X-Forwarded-For $remote_addr;",
             "        proxy_set_header X-Forwarded-Proto $scheme;",
             "        proxy_set_header X-Forwarded-Ssl on;",
+            "        # Always set, never forwarded from the client. On this listener",
+            "        # $proxy_protocol_addr is empty, which is the point: it overwrites any",
+            "        # X-Onion-Circuit a visitor sends. Without it, a request to :80 carrying",
+            "        # Host: <onion> and a forged header would mint rate-limit buckets at will.",
+            "        proxy_set_header X-Onion-Circuit $proxy_protocol_addr;",
             "        proxy_buffering off;",
             "        proxy_request_buffering off;",
             "    }",
             "    " + self.__snippet_end,
         ])
+
+    # ------------- shared circuit listener (nginx) --------------------------
+
+    def _build_circuit_listener(self, listen_port, circuit_port):
+        """One shared server block for Tor connections that carry a PROXY header.
+
+        This deliberately does not live in the per-vhost snippet. proxy_protocol
+        is a per-listen option and nginx accepts it only once per address:port,
+        so repeating it across two onion vhosts fails the config test with
+        "duplicate listen options" and the reload dies. Host routing is not lost
+        by centralising it: Onion Guard already selects the domain config from
+        the Host header, so a single catch-all block is enough.
+        """
+        return "\n".join([
+            self.__circuit_marker,
+            "# Auto-generated by Onion Guard — do not edit manually",
+            "# Tor reaches this listener only for a hidden service configured with",
+            "#   HiddenServicePort <vport> 127.0.0.1:" + str(circuit_port),
+            "#   HiddenServiceExportCircuitID haproxy",
+            "# Until then nothing connects here and this block is inert.",
+            "server {",
+            "    listen 127.0.0.1:" + str(circuit_port) + " proxy_protocol;",
+            "    server_name _;",
+            "    location / {",
+            "        proxy_pass http://127.0.0.1:" + str(listen_port) + ";",
+            "        proxy_set_header Host $host;",
+            "        proxy_set_header X-Forwarded-Proto https;",
+            "        proxy_set_header X-Forwarded-Ssl on;",
+            "        # Stable per circuit. Set from the PROXY header, never from the client.",
+            "        proxy_set_header X-Onion-Circuit $proxy_protocol_addr;",
+            "        proxy_buffering off;",
+            "        proxy_request_buffering off;",
+            "    }",
+            "}",
+            self.__circuit_end,
+            "",
+        ])
+
+    def _nginx_config_ok(self):
+        for cmd in ["nginx -t 2>&1", "/www/server/nginx/sbin/nginx -t 2>&1"]:
+            o, _, c = self._exec(cmd)
+            low = (o or '').lower()
+            if 'syntax is ok' in low or 'test is successful' in low or c == 0:
+                return True, (o or '').strip()
+            if o:
+                return False, o.strip()
+        return False, 'nginx -t could not be run'
+
+    def _write_circuit_conf(self, vhost_dir):
+        """Write the shared listener, then prove nginx still parses.
+
+        A config file that fails `nginx -t` is a landmine: nothing breaks now,
+        but the next reload or reboot takes the sites down. If this file is what
+        broke the test, it is removed again rather than left on disk.
+        """
+        path = os.path.join(vhost_dir, self.__circuit_conf)
+        existed = self._file_exists(path)
+        previous = ''
+        if existed:
+            ok, previous, _ = self._read_file_shell(path)
+            if not ok:
+                previous = ''
+        cfg = self._read_json(self.__config_file, dict(self.__default_config))
+        content = self._build_circuit_listener(int(cfg.get('listen_port', 7777)),
+                                               int(cfg.get('circuit_port', 7779)))
+        wok, werr = self._write_file_shell(path, content)
+        if not wok:
+            return False, werr
+        ok, detail = self._nginx_config_ok()
+        if ok:
+            return True, ''
+        if existed and previous:
+            self._write_file_shell(path, previous)
+        else:
+            self._exec('rm -f ' + path)
+        reason = detail.splitlines()[-1] if detail else 'nginx -t failed'
+        return False, 'nginx rejected the circuit listener, so it was rolled back: ' + reason
+
+    def _remove_circuit_conf(self, vhost_dir):
+        path = os.path.join(vhost_dir, self.__circuit_conf)
+        if self._file_exists(path):
+            self._exec('rm -f ' + path)
+
+    def _any_snippet_present(self, vhost_dir):
+        """True if any vhost still carries the OG proxy snippet."""
+        out, _, c = self._exec("ls -1 %s/*.conf 2>/dev/null" % vhost_dir)
+        if c != 0 or not out.strip():
+            return False
+        for conf_path in out.strip().splitlines():
+            conf_path = conf_path.strip()
+            if os.path.basename(conf_path) in (self.__backend_conf, self.__circuit_conf):
+                continue
+            ok, content, _ = self._read_file_shell(conf_path)
+            if ok and self.__snippet_marker in content:
+                return True
+        return False
 
     # ------------- get snippet API ------------------------------------------
 
@@ -1225,7 +1373,7 @@ fi
             if not conf_path:
                 continue
             fname = os.path.basename(conf_path)
-            if fname == self.__backend_conf:
+            if fname in (self.__backend_conf, self.__circuit_conf):
                 continue
             ok, content, _ = self._read_file_shell(conf_path)
             if not ok:
@@ -1255,7 +1403,8 @@ fi
         if target == 'all':
             out, _, _ = self._exec("ls -1 %s/*.conf 2>/dev/null" % vhost_dir)
             files = [f.strip() for f in (out or '').splitlines()
-                     if f.strip() and not f.strip().endswith('/' + self.__backend_conf)]
+                     if f.strip() and os.path.basename(f.strip()) not in (self.__backend_conf,
+                                                                          self.__circuit_conf)]
         else:
             if not target.startswith(vhost_dir + '/') or '..' in target:
                 return json.dumps({"status": False, "msg": "Invalid path."})
@@ -1328,6 +1477,18 @@ fi
                         logs.append(fname + ": backend skipped — " + (berr or "parse error"))
             else:
                 logs.append(fname + ": write failed — " + werr)
+
+        # The circuit listener is shared rather than per-vhost, so it is written
+        # once any vhost is protected and dropped when the last one goes.
+        if ws == 'nginx':
+            if injected > 0:
+                cok, cerr = self._write_circuit_conf(vhost_dir)
+                logs.append(self.__circuit_conf + (
+                    ': circuit listener on 127.0.0.1:%d' % int(cfg.get('circuit_port', 7779))
+                    if cok else ': write failed — ' + cerr))
+            elif removed > 0 and not self._any_snippet_present(vhost_dir):
+                self._remove_circuit_conf(vhost_dir)
+                logs.append(self.__circuit_conf + ': removed (no protected vhosts left)')
 
         # Reload web server
         reloaded = False
@@ -1541,7 +1702,8 @@ fi
         return json.dumps({'status': False, 'logs': 'No logs found.', 'source': ''})
 
     def clear_stats(self, args=None):
-        self._write_json(self.__stats_file, {'pow_solved': 0, 'blocked': 0, 'rate_limited': 0, 'tokens_active': 0})
+        self._write_json(self.__stats_file, {'pow_solved': 0, 'blocked': 0, 'rate_limited': 0,
+                                             'tokens_active': 0, 'rate_buckets': 0})
         return json.dumps({'status': True, 'msg': 'Stats cleared.'})
 
     # =========================================================================
@@ -1549,9 +1711,8 @@ fi
     # =========================================================================
     def _get_server_script_src(self):
         return r'''#!/usr/bin/env python3
-"""Onion Guard v2.2 - Multi-domain PoW + Firewall server (JS + no-JS CAPTCHA)"""
-import hashlib, hmac, io, json, logging, os, random, secrets, signal, threading, time
-from urllib.parse import urljoin
+"""Onion Guard v2.5 - Multi-domain PoW + Firewall server (JS + no-JS CAPTCHA)"""
+import hashlib, hmac, io, json, logging, os, random, re, secrets, signal, threading, time
 import httpx, jwt
 from flask import Flask, make_response, redirect, render_template_string, request, send_file
 
@@ -1564,7 +1725,7 @@ except Exception:
 CONFIG_FILE    = os.environ.get("CONFIG_FILE",    "/opt/onion_guard/config.json")
 BLOCKLIST_FILE = os.environ.get("BLOCKLIST_FILE", "/opt/onion_guard/blocklist.json")
 BRANDING_FILE  = os.environ.get("BRANDING_FILE",  "/opt/onion_guard/branding.json")
-STATS_FILE     = os.environ.get("STATS_FILE",     "/tmp/onion_guard_stats.json")
+STATS_FILE     = os.environ.get("STATS_FILE",     "/run/onion_guard/stats.json")
 
 def _load_config():
     try:
@@ -1583,6 +1744,8 @@ TOKEN_TTL   = int(_cfg.get("token_ttl", 3600))
 LISTEN_PORT = int(_cfg.get("listen_port", 7777))
 RATE_LIMIT  = int(_cfg.get("rate_limit", 120))
 INTERNAL_PORT = int(_cfg.get("internal_port", 7780))
+CIRCUIT_PORT  = int(_cfg.get("circuit_port", 7779))
+CIRCUIT_HEADER = "X-Onion-Circuit"
 DOMAINS     = _cfg.get("domains", {})
 LOGO_DIR    = os.path.join(os.path.dirname(CONFIG_FILE), "logo")
 
@@ -1592,7 +1755,7 @@ app = Flask(__name__, instance_path='/opt/onion_guard')
 
 _blocklist   = {"paths": [], "user_agents": []}
 _rate_store  = {}
-_stats       = {"pow_solved": 0, "blocked": 0, "rate_limited": 0, "tokens_active": 0}
+_stats       = {"pow_solved": 0, "blocked": 0, "rate_limited": 0, "tokens_active": 0, "rate_buckets": 0}
 _req_times   = []
 _current_diff = DIFFICULTY
 
@@ -1606,6 +1769,9 @@ def _save_stats():
     try:
         _stats["current_difficulty"] = _current_diff
         _stats["requests_last_60s"]  = len([t for t in _req_times if time.time() - t < 60])
+        d = os.path.dirname(STATS_FILE)
+        if d and not os.path.isdir(d):
+            os.makedirs(d, mode=0o700, exist_ok=True)
         with open(STATS_FILE, "w") as f: json.dump(_stats, f)
     except: pass
 
@@ -1636,6 +1802,61 @@ def _issue_token():
 def _valid_token(token):
     try: jwt.decode(token, SECRET_KEY, algorithms=["HS256"]); return True
     except: return False
+
+# --- Signed PoW challenges ---
+# A challenge is "<rand>.<issued_at>.<difficulty>.<sig>", signed with the same
+# secret that signs the JWT. Without the signature the server has no way to tell
+# its own challenge from one the client made up, so a single solution computed
+# offline mints unlimited tokens; without the burn below, a legitimately solved
+# challenge can be replayed forever. Both are needed for the gate to cost anything.
+CHALLENGE_TTL = 180        # seconds a challenge stays solvable
+CHALLENGE_SKEW = 30        # tolerance for clock drift on the issued-at stamp
+_solved_store = {}         # spent challenge -> expiry, enforces single use
+_solved_lock  = threading.Lock()
+_SOLVED_MAX   = 20000
+
+def _challenge_sign(rand, ts, diff):
+    msg = ("%s.%d.%d" % (rand, ts, diff)).encode()
+    return hmac.new(SECRET_KEY.encode(), msg, hashlib.sha256).hexdigest()[:32]
+
+def _challenge_new():
+    rand, ts, diff = secrets.token_hex(16), int(time.time()), _current_diff
+    return "%s.%d.%d.%s" % (rand, ts, diff, _challenge_sign(rand, ts, diff)), diff
+
+def _challenge_check(challenge):
+    """Return the difficulty bound into a valid challenge, else None."""
+    parts = (challenge or "").split(".")
+    if len(parts) != 4:
+        return None
+    rand, ts_s, diff_s, sig = parts
+    try:
+        ts, diff = int(ts_s), int(diff_s)
+    except ValueError:
+        return None
+    if not hmac.compare_digest(sig, _challenge_sign(rand, ts, diff)):
+        return None
+    now = int(time.time())
+    if ts > now + CHALLENGE_SKEW or now - ts > CHALLENGE_TTL:
+        return None
+    # Refuse a challenge minted before an adaptive difficulty rise, so an
+    # attacker cannot stockpile cheap challenges and spend them during a flood.
+    if diff < DIFFICULTY:
+        return None
+    return diff
+
+def _challenge_burn(challenge):
+    """Mark a challenge spent. False if it was already used."""
+    now = time.time()
+    with _solved_lock:
+        for k in [k for k, exp in _solved_store.items() if exp < now]:
+            _solved_store.pop(k, None)
+        if challenge in _solved_store:
+            return False
+        if len(_solved_store) >= _SOLVED_MAX:
+            for k, _ in sorted(_solved_store.items(), key=lambda x: x[1])[:_SOLVED_MAX // 10]:
+                _solved_store.pop(k, None)
+        _solved_store[challenge] = now + CHALLENGE_TTL + CHALLENGE_SKEW
+    return True
 
 # --- CAPTCHA (no-JS fallback) ---
 _captcha_store = {}
@@ -1727,13 +1948,67 @@ def _is_blocked_agent(ua):
         if b and b.lower() in ua_lower: return True
     return False
 
-def _rate_limited(ip):
+_rate_lock = threading.Lock()
+_rate_last_sweep = 0.0
+_RATE_WINDOW = 120
+_RATE_MAX_KEYS = 50000
+
+def _rate_key(dcfg):
+    """Bucket a request by Tor circuit when one is visible.
+
+    Every onion visitor reaches this process as 127.0.0.1 -- the Tor daemon and
+    the web server are both local -- so keying on remote_addr puts the entire
+    world in a single bucket. That does not merely weaken the limit, it hands an
+    attacker a switch: fill the one bucket and every legitimate visitor gets 429.
+
+    A circuit is the narrowest unit a hidden service can observe. The header is
+    only honoured once the Host has been matched to a configured .onion; nginx
+    always sets it (empty on the clearnet listener), so a client-supplied value
+    can never reach here and mint fresh buckets.
+    """
+    if dcfg is not None:
+        cid = (request.headers.get(CIRCUIT_HEADER, "") or "").strip()
+        if cid:
+            return "c:" + cid[:128]
+    return "s:" + (request.remote_addr or "unknown")
+
+def _rate_sweep(now):
+    """Drop expired buckets. Caller holds _rate_lock."""
+    global _rate_last_sweep
+    if now - _rate_last_sweep < 60 and len(_rate_store) < _RATE_MAX_KEYS:
+        return
+    _rate_last_sweep = now
+    for k in [k for k, b in _rate_store.items() if not b or now - b[-1] >= _RATE_WINDOW]:
+        _rate_store.pop(k, None)
+
+def _rate_limited(key):
     now = time.time()
-    bucket = _rate_store.get(ip, [])
-    bucket = [t for t in bucket if now - t < 120]
-    bucket.append(now)
-    _rate_store[ip] = bucket
-    return len(bucket) > RATE_LIMIT
+    with _rate_lock:
+        _rate_sweep(now)
+        bucket = [t for t in _rate_store.get(key, []) if now - t < _RATE_WINDOW]
+        bucket.append(now)
+        _rate_store[key] = bucket
+        # More than one bucket means circuit ids are arriving; exactly one means
+        # every request is sharing the fallback, which the panel surfaces so a
+        # half-finished migration is visible instead of silent.
+        _stats["rate_buckets"] = len(_rate_store)
+        return len(bucket) > RATE_LIMIT
+
+def _safe_next(raw):
+    """Constrain the post-challenge destination to a path on this service.
+
+    The gate hands this straight to window.location, so an unchecked value is an
+    open redirect -- and on a hidden service an open redirect to clearnet walks
+    the visitor out of Tor, which is a deanonymisation step, not a nuisance.
+    A leading "//" or "/\\" is protocol-relative and leaves the site, so a bare
+    startswith("/") is not enough on its own.
+    """
+    nxt = (raw or "/").strip()
+    if not nxt.startswith("/") or nxt.startswith("//") or nxt.startswith("/\\"):
+        return "/"
+    if "\r" in nxt or "\n" in nxt:
+        return "/"
+    return nxt
 
 def _get_domain_config(host):
     if not host: return None
@@ -1750,17 +2025,48 @@ def _get_gate_html():
         _gate_html_cache = _build_gate_html()
     return _gate_html_cache
 
+_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+
+def _brand_color(value, fallback):
+    """Only a literal hex colour. Anything else lands inside a CSS declaration."""
+    v = (value or "").strip()
+    return v if _COLOR_RE.match(v) else fallback
+
+def _brand_text(value, fallback, allow_br=False):
+    """Make an operator-supplied string safe to place inside the gate template.
+
+    The gate is rendered with render_template_string, and these values are part
+    of the template source, so a "{{ ... }}" in a branding field is evaluated by
+    Jinja -- server-side template injection, which in this process is remote code
+    execution. Braces are removed rather than escaped, because HTML escaping
+    leaves "{{" untouched and no page title legitimately contains one.
+    """
+    v = value if isinstance(value, str) else ""
+    if not v.strip():
+        v = fallback
+    v = v.replace("{", "").replace("}", "")
+    v = (v.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+          .replace('"', "&quot;").replace("'", "&#39;"))
+    if allow_br:
+        v = re.sub(r"&lt;br\s*/?&gt;", "<br>", v, flags=re.IGNORECASE)
+    return v
+
 def _build_gate_html():
     br = _load_branding()
-    color  = br.get("primary_color", "#00bf80")
-    title  = br.get("page_title", "Security Verification")
-    sub    = br.get("subtitle", "Your browser is completing a proof-of-work challenge.<br>This protects the network from automated attacks.")
-    bg     = br.get("background_color", "#0a0a0a")
-    card   = br.get("card_color", "#111111")
-    txt    = br.get("text_color", "#e0e0e0")
+    color  = _brand_color(br.get("primary_color"), "#00bf80")
+    title  = _brand_text(br.get("page_title"), "Security Verification")
+    sub    = _brand_text(br.get("subtitle"),
+                         "Your browser is completing a proof-of-work challenge.<br>"
+                         "This protects the network from automated attacks.", allow_br=True)
+    bg     = _brand_color(br.get("background_color"), "#0a0a0a")
+    card   = _brand_color(br.get("card_color"), "#111111")
+    txt    = _brand_color(br.get("text_color"), "#e0e0e0")
     show_branding = bool(br.get("show_branding", True))
-    has_logo = _find_logo_file() is not None or bool(br.get("logo_url", ""))
-    logo_src = "/pow/logo" if _find_logo_file() else br.get("logo_url", "")
+    # Only a locally uploaded logo. A remote logo_url would make the visitor's
+    # browser fetch clearnet from inside a .onion page, which is a
+    # deanonymisation vector dressed up as branding.
+    has_logo = _find_logo_file() is not None
+    logo_src = "/pow/logo" if has_logo else ""
     logo_h = '<div class="logo"><img src="' + logo_src + '" alt="Logo" onerror="this.parentElement.style.display=\'none\'"></div>' if has_logo else ''
     branding_h = '<div class="branding">Provided by <a href="https://imprezahost.com" target="_blank" rel="noopener">Impreza Host</a></div>' if show_branding else ''
     return """<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1830,8 +2136,36 @@ function showErr(m){st.textContent="";err.style.display="block";err.innerHTML=(m
 async function sha256hex(s){const b=new TextEncoder().encode(s),h=await crypto.subtle.digest("SHA-256",b);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,"0")).join("")}
 run();</script></body></html>"""
 
-SKIP_REQ={"host","connection","transfer-encoding"}
-SKIP_RESP={"content-encoding","transfer-encoding","connection","keep-alive"}
+# x-onion-circuit is stripped here on purpose. Forwarding it would hand the
+# customer's application a stable per-circuit identifier it never had -- free
+# session linking, delivered by the layer that is supposed to be protecting the
+# visitor. It is used in memory for rate limiting and goes no further; it is
+# never logged either.
+# Hop-by-hop headers per RFC 7230 6.1. They describe a single connection and
+# must not be forwarded across a proxy; PEP 3333 forbids a WSGI application from
+# emitting them at all, and a compliant WSGI server rejects a response carrying
+# one. All eight are filtered in both directions.
+HOP_BY_HOP = {"connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
+              "te", "trailer", "trailers", "transfer-encoding", "upgrade"}
+# content-length is recalculated by the WSGI layer; content-encoding is dropped
+# because httpx has already decompressed the body.
+SKIP_REQ  = HOP_BY_HOP | {"host", "content-length", "x-onion-circuit"}
+SKIP_RESP = HOP_BY_HOP | {"content-encoding", "content-length"}
+
+def _connection_tokens(headers):
+    """Headers named by the response's own Connection field are hop-by-hop too.
+
+    RFC 7230 lets a sender mark extra headers as connection-specific this way,
+    so a fixed list is not enough to catch everything a backend may send.
+    """
+    extra = set()
+    for value in (headers.get_list("connection") if hasattr(headers, "get_list")
+                  else [headers.get("connection", "")]):
+        for token in (value or "").split(","):
+            token = token.strip().lower()
+            if token and token != "close":
+                extra.add(token)
+    return extra
 
 def _proxy(dcfg, incoming_host):
     bh = dcfg.get("backend_host","127.0.0.1")
@@ -1845,18 +2179,35 @@ def _proxy(dcfg, incoming_host):
         scheme = "https" if bp == 443 else "http"
     backend_url = f"{scheme}://{bh}:{bp}"
     path = request.full_path if request.query_string else request.path
-    url = urljoin(backend_url, path)
+    # Concatenated, not urljoin()ed. urljoin("http://127.0.0.1:7780", "//evil.com/x")
+    # returns "http://evil.com/x": a protocol-relative request path would send the
+    # proxy to an arbitrary host. Werkzeug usually normalises "//" away first, but
+    # that is a framework detail to rely on, not a control -- and the failure mode
+    # here is a hidden service making outbound clearnet requests.
+    if not path.startswith("/"):
+        path = "/" + path
+    while path.startswith("//"):
+        path = "/" + path.lstrip("/")
+    url = backend_url + path
     hdrs = {k:v for k,v in request.headers if k.lower() not in SKIP_REQ}
     hdrs["Host"] = bd
     hdrs["X-Forwarded-Proto"] = "https"
     hdrs["X-Forwarded-Ssl"] = "on"
     try:
-        up = httpx.request(request.method, url, headers=hdrs, content=request.get_data(), follow_redirects=False, timeout=30, verify=False)
+        # Certificates are verified for any backend off this machine: on a hidden
+        # service that leg leaves the Tor network, so it must be authenticated.
+        # Loopback backends are reached over plain HTTP on the internal port, so
+        # there is nothing to verify there; a self-signed remote backend can opt
+        # out per domain with verify_tls.
+        verify_tls = False if scheme == "http" else bool(dcfg.get("verify_tls", True))
+        up = httpx.request(request.method, url, headers=hdrs, content=request.get_data(),
+                           follow_redirects=False, timeout=30, verify=verify_tls)
     except httpx.RequestError as ex:
         log.error("Upstream: %s", ex); return "Bad Gateway", 502
     rh = []
+    drop = SKIP_RESP | _connection_tokens(up.headers)
     for k, v in up.headers.items():
-        if k.lower() in SKIP_RESP: continue
+        if k.lower() in drop: continue
         if k.lower() == "location" and bd and incoming_host:
             v = v.replace("https://"+bd, "https://"+incoming_host)
             v = v.replace("http://"+bd, "https://"+incoming_host)
@@ -1865,29 +2216,55 @@ def _proxy(dcfg, incoming_host):
 
 @app.route("/pow/challenge")
 def pow_challenge():
-    return {"challenge": secrets.token_hex(16), "difficulty": _current_diff}
+    challenge, diff = _challenge_new()
+    resp = make_response({"challenge": challenge, "difficulty": diff})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 @app.route("/pow/verify", methods=["POST"])
 def pow_verify():
     data = request.get_json(silent=True) or {}
     ch, nonce = str(data.get("challenge","")), data.get("nonce")
     if not ch or nonce is None: return {"error":"Missing fields"}, 400
-    if not hashlib.sha256(f"{ch}{nonce}".encode()).hexdigest().startswith("0"*_current_diff):
+    diff = _challenge_check(ch)
+    if diff is None:
+        _stats["blocked"] += 1; _save_stats()
+        return {"error":"Challenge expired or not issued by this server"}, 400
+    if not hashlib.sha256(f"{ch}{nonce}".encode()).hexdigest().startswith("0"*diff):
         _stats["blocked"] += 1; _save_stats(); return {"error":"Invalid solution"}, 400
+    if not _challenge_burn(ch):
+        _stats["blocked"] += 1; _save_stats(); return {"error":"Challenge already used"}, 400
     token = _issue_token()
     _stats["pow_solved"] += 1; _save_stats()
     resp = make_response({"ok":True})
     resp.set_cookie("pow_token", token, httponly=True, samesite="Lax", max_age=TOKEN_TTL, secure=True)
     return resp
 
+# Nothing on the gate may reach off-site. On a hidden service a third-party
+# fetch is not a privacy smell, it is the visitor's browser opening a clearnet
+# connection from inside a .onion page. The gate's own script and styles are
+# inline, so 'unsafe-inline' is required, but every remote origin is refused.
+# connect-src is not optional here: the gate solves the challenge over fetch(),
+# and with default-src 'none' the fetch inherits 'none' and is blocked, which
+# breaks the JS path for every visitor. Each directive below corresponds to
+# something the page actually loads; keep them in step when changing the page.
+GATE_CSP = ("default-src 'none'; connect-src 'self'; img-src 'self' data:; "
+            "style-src 'unsafe-inline'; script-src 'unsafe-inline'; "
+            "form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+
 @app.route("/pow/gate")
 def pow_gate():
-    return render_template_string(
+    resp = make_response(render_template_string(
         _get_gate_html(),
-        next_url=request.args.get("next", "/"),
+        next_url=_safe_next(request.args.get("next")),
         captcha_token=_captcha_new(),
         captcha_error=(request.args.get("err") == "1"),
-    )
+    ))
+    resp.headers["Content-Security-Policy"] = GATE_CSP
+    resp.headers["Referrer-Policy"] = "no-referrer"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 @app.route("/pow/captcha.png")
 def pow_captcha_img():
@@ -1907,8 +2284,7 @@ def pow_captcha_img():
 def pow_captcha_verify():
     tok   = request.form.get("token", "")
     ans   = request.form.get("answer", "")
-    nxt   = request.form.get("next", "/") or "/"
-    if not nxt.startswith("/"): nxt = "/"
+    nxt   = _safe_next(request.form.get("next"))
     if not _captcha_consume(tok, ans):
         _stats["blocked"] += 1; _save_stats()
         return redirect("/pow/gate?next=" + nxt + "&err=1")
@@ -1929,7 +2305,14 @@ def _find_logo_file():
 def pow_logo():
     p = _find_logo_file()
     if not p: return "", 204
-    return send_file(p)
+    resp = make_response(send_file(p))
+    # SVG is an accepted upload format and SVG can carry script. Inside the gate
+    # it sits in an <img>, where script never runs, but a visitor who opens this
+    # URL directly would execute it on the .onion's own origin. This CSP and the
+    # nosniff header make that inert.
+    resp.headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    return resp
 
 @app.route("/", defaults={"path":""})
 @app.route("/<path:path>", methods=["GET","POST","PUT","DELETE","PATCH","HEAD","OPTIONS"])
@@ -1954,12 +2337,27 @@ def catch_all(path):
     if token and _valid_token(token): return _proxy(dcfg, host)
     skip_ext = (".js",".css",".png",".jpg",".ico",".svg",".woff",".woff2")
     if not request.path.endswith(skip_ext):
-        if _rate_limited(ip): _stats["rate_limited"]+=1; _save_stats(); return "Too Many Requests", 429
+        if _rate_limited(_rate_key(dcfg)): _stats["rate_limited"]+=1; _save_stats(); return "Too Many Requests", 429
     next_url = request.path
     if request.query_string: next_url += "?" + request.query_string.decode()
     return redirect(f"/pow/gate?next={next_url}")
 
 if __name__ == "__main__":
-    log.info("Onion Guard v2 on port %d (difficulty=%d, domains=%d)", LISTEN_PORT, DIFFICULTY, len(DOMAINS))
-    app.run(host="127.0.0.1", port=LISTEN_PORT)
+    log.info("Onion Guard on port %d (difficulty=%d, domains=%d)", LISTEN_PORT, DIFFICULTY, len(DOMAINS))
+    try:
+        from waitress import serve
+    except ImportError:
+        # Falling back keeps the service up rather than taking a .onion offline
+        # over a missing package, but the Flask development server is not built
+        # to face traffic: single-threaded by default, no request limits, and
+        # explicitly unsupported for production by Flask itself.
+        log.error("waitress is not installed, falling back to the Flask development server. "
+                  "This should not be serving production traffic -- run "
+                  "Config -> Update server script in the panel to install it.")
+        app.run(host="127.0.0.1", port=LISTEN_PORT)
+    else:
+        # ident=None drops the Server header: a hidden service has no reason to
+        # advertise its stack.
+        serve(app, host="127.0.0.1", port=LISTEN_PORT, threads=16, ident=None,
+              connection_limit=512, channel_timeout=60)
 '''
